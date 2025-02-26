@@ -24,7 +24,15 @@ All literature files must be standardized using the following column names:
 - **rsID** : If it is present in the study report, include it; otherwise, leave it out. In the meta-analysis, chr:pos:a1:a2 is used, so not having an rsID is not a problem
 - **chr**
 _ **pos37** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
+```
+step1: convert the file into a vcf-file
+step2: then use BCFTOOLS
+```
 - **pos38** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
+```
+step1: convert the file into a vcf-file
+step2: then use BCFTOOLS
+```
 - **SeqID** : The following format should be used: seq.17333.20. If the format is 17333-20, start by adding 'seq.' to the string, then replace the dash (-) with a dot (.). If the operation is reversed, the final 0 will be lost.
 - **OlinkID** : If this information is not available, leave it blank
 - **UniProt** 
@@ -40,4 +48,8 @@ library(rtracklayer)
 pval <- 2 * pnorm(mpfr(-abs(data$BETA / data$SE), 120))
 data$minuslog10pval <- as.numeric(-log10(pval))
 ```
+- **SAMPLE_SIZE**
+- **COHORT**
+- **TECHNOLOGY**
+- **Unit**
 
