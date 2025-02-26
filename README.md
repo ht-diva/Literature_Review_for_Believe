@@ -11,7 +11,7 @@ The objective of this work is to develop a standardized literature table to eval
 - Ferkingstad et al., 2021 (DOI: 10.1038/s41588-021-00978-w)
 - Zhang et al., 2022 (DOI: 10.1038/s41588-022-01051-w)
 
-Additionally, we included the Sun et al. 2023 UK Biobank study (DOI: 10.1038/s41586-023-06592-6), which employed the Olink proteomic platform and represents the largest pQTL study conducted to date in a European population (54,219 individuals and 2,923 protein targets). Although this study used a different proteomic technology, it presents an important opportunity to compare and cross-validate pQTL signals across distinct platforms.
+Additionally, we included the Sun et al. 2023 UK Biobank study (DOI: 10.1038/s41586-023-06592-6), which employed the Olink proteomic platform and represents the largest pQTL study conducted to date in a European population (54,219 individuals and 2,923 protein targets). Although this study used a different proteomic technology, it presents an important opportunity to compare and cross-validate pQTL signals across distinct platforms. </br>
 (/exchange/healthds/pQTL/Reference_datasets_for_QC_proteomics/literature_table/literature_file.xlsx)
 
 We also aim to apply the same approach for the Believe study by including a non-European population to ensure a broader spectrum for determining whether a signal is true or not. 
