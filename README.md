@@ -14,7 +14,7 @@ The objective of this work is to develop a standardized literature table to eval
 Additionally, we included the Sun et al. 2023 UK Biobank study (DOI: 10.1038/s41586-023-06592-6), which employed the Olink proteomic platform and represents the largest pQTL study conducted to date in a European population (54,219 individuals and 2,923 protein targets). Although this study used a different proteomic technology, it presents an important opportunity to compare and cross-validate pQTL signals across distinct platforms. </br>
 (/exchange/healthds/pQTL/Reference_datasets_for_QC_proteomics/literature_table/literature_file.xlsx)
 
-We also aim to apply the same approach for the Believe study by including a non-European population to ensure a broader spectrum for determining whether a signal is true or not. 
+We also aim to apply the same approach for the Believe study by including a non-European population to ensure a broader spectrum for determining whether a signal is new or not. 
 
 ## Starting point ##
 As a starting point, we have decided to include the ARIC study, which focuses on the African-American population. You can download the file here: ARIC study file. We still need to discuss with Adam on the 19th of March to finalize which other studies to include in our analysis. However, in the meantime, the work can begin with the ARIC study as a non-European dataset to start familiarizing with the process (you can download the ARIC table here: https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/files).
