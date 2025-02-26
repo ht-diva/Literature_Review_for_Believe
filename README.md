@@ -18,8 +18,8 @@ We also aim to apply the same approach for the Believe study by including a non-
 
 ## Starting point ##
 As a starting point, we have decided to include the ARIC study, which focuses on the African-American population. You can download the file here: ARIC study file. We still need to discuss with Adam on the 19th of March to finalize which other studies to include in our analysis. However, in the meantime, the work can begin with the ARIC study as a non-European dataset to start familiarizing with the process (you can download the ARIC table here: https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/files).
-
-**Steps to be followed:**
+</br>
+</br>
 All literature files must be standardized using the following column names:
 - **pqtlID** : This column contains the following information, separated by a dash (_): rsID_SeqID_PMID_COHORT (e.g. *rs3766509_seq.5742.14_34857953_deCODE*). If some information is missing, such as rsID, leave the space blank (e.g. *_seq.3484.60_34857953_deCODE*).
 - **rsID** : If it is present in the study report, include it; otherwise, leave it out. In the meta-analysis, chr:pos:a1:a2 is used, so not having an rsID is not a problem
