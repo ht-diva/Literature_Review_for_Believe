@@ -12,11 +12,12 @@ The objective of this work is to develop a standardized literature table to eval
 - Zhang et al., 2022 (DOI: 10.1038/s41588-022-01051-w)
 
 Additionally, we included the Sun et al. 2023 UK Biobank study (DOI: 10.1038/s41586-023-06592-6), which employed the Olink proteomic platform and represents the largest pQTL study conducted to date in a European population (54,219 individuals and 2,923 protein targets). Although this study used a different proteomic technology, it presents an important opportunity to compare and cross-validate pQTL signals across distinct platforms.
+(/exchange/healthds/pQTL/Reference_datasets_for_QC_proteomics/literature_table/literature_file.xlsx)
 
 We also aim to apply the same approach for the Believe study by including a non-European population to ensure a broader spectrum for determining whether a signal is true or not. 
 
 ## Starting point ##
-As a starting point, we have decided to include the ARIC study, which focuses on the African-American population (download file here: https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/files)
+As a starting point, we have decided to include the ARIC study, which focuses on the African-American population. You can download the file here: ARIC study file. We still need to discuss with Adam on the 19th of March to finalize which other studies to include in our analysis. However, in the meantime, the work can begin with the ARIC study as a non-European dataset to start familiarizing with the process (you can download the ARIC table here: https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/files).
 
 **step to need to followed:**
 All literature files must be standardized using the following column names:
@@ -25,7 +26,7 @@ All literature files must be standardized using the following column names:
 - **chr**
 _ **pos37** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
 ```
-step1: convert the file into a vcf-file
+step1: Convert the file into a VCF file (The function needs to be adapted)
 write_vcf <- function(df, output_filename) {
   # Create a connection to write to a file
   vcf_file <- file(output_filename, "w")
@@ -35,26 +36,28 @@ write_vcf <- function(df, output_filename) {
     # Write the VCF header
     writeLines("##fileformat=VCFv4.2", vcf_file)
     writeLines("##source=RScript", vcf_file)
-    writeLines("##reference=GRCh37", vcf_file)
+    writeLines("##reference=GRCh38", vcf_file)
+    writeLines("##INFO=<ID=EAF,Number=1,Type=Float,Description=Effect Allele Frequency>", vcf_file)
     writeLines("##INFO=<ID=BETA,Number=1,Type=Float,Description=Effect Size Estimate>", vcf_file)
     writeLines("##INFO=<ID=SE,Number=1,Type=Float,Description=Standard Error>", vcf_file)
-    writeLines("##INFO=<ID=SAMPLE_SIZE,Number=1,Type=Integer,Description=Sample Size>", vcf_file)
-    writeLines("##INFO=<ID=minuslog10pval,Number=1,Type=Float,Description=Negative Log10 P-value>", vcf_file)
-    writeLines("#CHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tINFO", vcf_file)
+    writeLines("##INFO=<ID=N,Number=1,Type=Integer,Description=Sample Size>", vcf_file)
+    writeLines("##INFO=<ID=MLOG10P,Number=1,Type=Float,Description=Negative Log10 P-value>", vcf_file)
+    writeLines("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", vcf_file)
 
     # Write each row as a VCF entry
     for (i in 1:nrow(df)) {
       # Extract chromosome, position, reference allele (NEA), and alternate allele (EA)
-      chrom <- df$chr[i]
-      pos <- df$pos37[i]
+      chrom <- df$CHR[i]
+      pos <- df$POS[i]
+      id <- df$SNPID[i]
       ref <- df$EA[i]
       alt <- df$NEA[i]
       qual <- "."
       filter <- "."
 
       # Create the INFO field (customize as needed)
-      info <- paste0(BETA=", df$BETA[i], ";SE=", df$SE[i],
-                     ";SAMPLE_SIZE=", df$SAMPLE_SIZE[i], ";minuslog10pval=", minuslog10pval[i])
+      info <- paste0("EAF=", df$EAF[i], ";BETA=", df$BETA[i], ";SE=", df$SE[i],
+                     ";N=", df$N[i], ";MLOG10P=", df$MLOG10P[i])
 
       # Write the line to the VCF file
       line <- paste(chrom, pos, id, ref, alt, qual, filter, info, sep = "\t")
