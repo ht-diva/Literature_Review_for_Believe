@@ -1,7 +1,7 @@
 2025-02-26 Literature Review for Believe
 
 **Authors:**
-- Giulia Pontali, Solène Cadiou, Lucia Piubeni, Luisa Zuccolo
+- Giulia Pontali, Lucia Piubeni, Solène Cadiou, Claudia Giambartolomei
 
 ### Aim ###
 The objective of this work is to develop a standardized literature table to evaluate whether the cis-protein quantitative trait loci (pQTL) signals identified in the INTERVAL-CHRIS meta-analysis represent novel discoveries. To achieve this, we focus on four of the largest European pQTL studies in the literature, all of which utilized the Somalogic proteomic platform -the same platform used in our analysis-.
@@ -25,7 +25,19 @@ All literature files must be standardized using the following column names:
 - **chr**
 _ **pos37** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
 - **pos38** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
-- **SeqID** : we need to have the following format seq.17333.20. Pay attention if we have this format 17333-20 start with adding a seq. so now we have a string and then replace - (dash) with . (dot). If we do in the otherway around we will lose the final 0 
+- **SeqID** : The following format should be used: seq.17333.20. If the format is 17333-20, start by adding 'seq.' to the string, then replace the dash (-) with a dot (.). If the operation is reversed, the final 0 will be lost.
 - **OlinkID** : If this information is not available, leave it blank
 - **UniProt** 
-- ****
+- **OTHER_ALLELE**
+- **EFFECT_ALLELE**
+- **cis_trans**
+- **PMID**
+- **BETA**
+- **SE**
+- **minuslog10pval** : Please use the following code to retrieve it
+```
+library(rtracklayer)
+pval <- 2 * pnorm(mpfr(-abs(data$BETA / data$SE), 120))
+data$minuslog10pval <- as.numeric(-log10(pval))
+```
+
