@@ -21,8 +21,8 @@ As a starting point, we have decided to include the ARIC study, which focuses on
 </br>
 </br>
 All literature files must be standardized using the following column names:
-- **pqtlID** : This column contains the following information, separated by a dash (_): rsID_SeqID_PMID_COHORT (e.g. *rs3766509_seq.5742.14_34857953_deCODE*). If some information is missing, such as rsID, leave the space blank (e.g. *_seq.3484.60_34857953_deCODE*).
-- **rsID** : If it is present in the study report, include it; otherwise, leave it out. In the meta-analysis, chr:pos:a1:a2 is used, so not having an rsID is not a problem
+- **pqtlID** : This column contains the following information rsID_SeqID_PMID_COHORT separated by a dash (e.g. *rs3766509_seq.5742.14_34857953_deCODE*). If any information is missing, such as rsID, leave the space blank (e.g. *_seq.3484.60_34857953_deCODE*).
+- **rsID** : If the information is present in the study, include it; otherwise, leave it out. In the meta-analysis, the format chr:pos:a1:a2 is used, so the absence of an rsID is not an issue
 - **chr**
 _ **pos37** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
 ```
@@ -84,7 +84,7 @@ export BCFTOOLS_PLUGINS=/group/diangelantonio/software/liftOver_plugins/score_1.
 step1: convert the file into a vcf-file
 step2: use BCFTOOLS
 ```
-- **SeqID** : The following format should be used: seq.17333.20. If the format is 17333-20, start by adding 'seq.' to the string, then replace the dash (-) with a dot (.). If the operation is reversed, the final 0 will be lost.
+- **SeqID** : The following format should be used: seq.17333.20. If the format is 17333-20, start by adding 'seq.' to the string, then replace the dash (-) with a dot (.). If the operation is reversed, the final 0 will be lost
 - **OlinkID** : If this information is not available, leave it blank
 - **UniProt** 
 - **OTHER_ALLELE**
