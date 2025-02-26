@@ -23,9 +23,8 @@ We still need to discuss with Adam on the 19th of March to finalize which other 
 All literature files must be standardized using the following column names:
 - **pqtlID** : This column contains the following information rsID_SeqID_PMID_COHORT separated by a dash (e.g. *rs3766509_seq.5742.14_34857953_deCODE*). If any information is missing, such as rsID, leave the space blank (e.g. *_seq.3484.60_34857953_deCODE*).
 - **rsID** : If the information is present in the study, include it; otherwise, leave it out. In the meta-analysis, the format chr:pos:a1:a2 is used, so the absence of an rsID is not an issue
-- **chr**
-
-_ **pos37** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
+- **chr** 
+- **pos37** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
 ```
 step1: Convert the file into a VCF file (The function needs to be adapted)
 write_vcf <- function(df, output_filename) {
