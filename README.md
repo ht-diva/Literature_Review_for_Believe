@@ -1,11 +1,11 @@
----
-title: "2025-02-26 Literature Review for Believe"
-author: Giulia Pontali
-author: Solène Cadiou
-author: Lucia Piubeni
----
+2025-02-26 Literature Review for Believe
 
-## Aim
+**Authors:**
+- Giulia Pontali
+- Solène Cadiou
+- Lucia Piubeni
+
+## AIM ##
 The objective of this work is to develop a standardized literature table to evaluate whether the cis-protein quantitative trait loci (pQTL) signals identified in the INTERVAL-CHRIS meta-analysis represent novel discoveries. To achieve this, we focus on four of the largest European pQTL studies in the literature, all of which utilized the Somalogic proteomic platform -the same platform used in our analysis-.
 
 - Sun et al., 2018 (DOI: 10.1038/s41586-018-0175-2)
