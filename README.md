@@ -26,12 +26,60 @@ All literature files must be standardized using the following column names:
 _ **pos37** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
 ```
 step1: convert the file into a vcf-file
-step2: then use BCFTOOLS
+write_vcf <- function(df, output_filename) {
+  # Create a connection to write to a file
+  vcf_file <- file(output_filename, "w")
+
+  # Use tryCatch to ensure the file is closed properly
+  tryCatch({
+    # Write the VCF header
+    writeLines("##fileformat=VCFv4.2", vcf_file)
+    writeLines("##source=RScript", vcf_file)
+    writeLines("##reference=GRCh37", vcf_file)
+    writeLines("##INFO=<ID=BETA,Number=1,Type=Float,Description=Effect Size Estimate>", vcf_file)
+    writeLines("##INFO=<ID=SE,Number=1,Type=Float,Description=Standard Error>", vcf_file)
+    writeLines("##INFO=<ID=SAMPLE_SIZE,Number=1,Type=Integer,Description=Sample Size>", vcf_file)
+    writeLines("##INFO=<ID=minuslog10pval,Number=1,Type=Float,Description=Negative Log10 P-value>", vcf_file)
+    writeLines("#CHROM\tPOS\tREF\tALT\tQUAL\tFILTER\tINFO", vcf_file)
+
+    # Write each row as a VCF entry
+    for (i in 1:nrow(df)) {
+      # Extract chromosome, position, reference allele (NEA), and alternate allele (EA)
+      chrom <- df$chr[i]
+      pos <- df$pos37[i]
+      ref <- df$EA[i]
+      alt <- df$NEA[i]
+      qual <- "."
+      filter <- "."
+
+      # Create the INFO field (customize as needed)
+      info <- paste0(BETA=", df$BETA[i], ";SE=", df$SE[i],
+                     ";SAMPLE_SIZE=", df$SAMPLE_SIZE[i], ";minuslog10pval=", minuslog10pval[i])
+
+      # Write the line to the VCF file
+      line <- paste(chrom, pos, id, ref, alt, qual, filter, info, sep = "\t")
+      writeLines(line, vcf_file)
+    }
+  }, finally = {
+    # Ensure the file connection is closed
+    close(vcf_file)
+  })
+}
+
+write_vcf(df, vcf_path)
+
+step2: 
+export BCFTOOLS_PLUGINS=/group/diangelantonio/software/liftOver_plugins/score_1.20-20240505 && \
+        bgzip -c {input_vcf} > {input_vcf}.gz && \
+        tabix -p vcf {input_vcf}.gz && \
+        bcftools norm -f {input.hg37} -c s -Oz -o {output.output_norm} {input_vcf}.gz && \
+        bcftools +liftover --no-version -Ou {output.output_norm} -- -s {input.hg37} -f {input.hg38} -c {input.chain_file} > {output.output_vcf} && \
+        bcftools view {output.output_vcf} > {output.output_txt}
 ```
 - **pos38** : This information must be present. If pos38 is available, perform a liftover. To do this, use bcftools liftover as it provides 100% coverage in both directions
 ```
 step1: convert the file into a vcf-file
-step2: then use BCFTOOLS
+step2: use BCFTOOLS
 ```
 - **SeqID** : The following format should be used: seq.17333.20. If the format is 17333-20, start by adding 'seq.' to the string, then replace the dash (-) with a dot (.). If the operation is reversed, the final 0 will be lost.
 - **OlinkID** : If this information is not available, leave it blank
