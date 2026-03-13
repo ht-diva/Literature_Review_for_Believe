@@ -55,6 +55,32 @@ List of missing variants with ST19 information:
 python decode_2023_qc.py
 ```
 
+## Final QC Report
+
+Starting from the 39,520 variants of ST19, we found and retained 34,829 for the literature review.
+
+```
+Dropped variants:
+    |-> Statistical mismatch: 15
+    |-> Alleles mismatch: 153
+    |-> Monomorphic alleles: 4333
+
+Allele status:
+    |-> OK alleles: 29998
+    |-> One allele with */!: 4831
+    |-> Both alleles with */!: 0
+
+Total original variants: 39520
+Total found variants: 34829
+Total missing variants: 4691
+    |-> Missing file paths: 110
+    |-> Missing variants in GWAS: 4581
+        |-> Missing due to absence in GWAS: 80
+        |-> Missing due to statistical mismatch: 15
+        |-> Missing due to allele mismatch: 153
+        |-> Missing due to monomorphic status: 4333
+```
+
 ## References
 
 decode_2023_st19.csv corresponds to the Supplemetary Table 19 from:

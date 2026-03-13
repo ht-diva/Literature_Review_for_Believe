@@ -133,4 +133,4 @@ Literature harmonization is designed to format summary statistics based on GWASL
 
 ### How to run
 
-To run all the harmonization and GWASStudio analyses, please see https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_scripts/scripts/README.md.
+To run all the harmonization and GWASStudio analyses, please see https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_scripts/README.md
