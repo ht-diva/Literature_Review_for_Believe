@@ -107,11 +107,9 @@ data$minuslog10pval <- as.numeric(-log10(pval))
 
 ## Literature Harmonization & Lead SNPs Export ##
 
-### Aim
+### Harmonization
 
 Literature harmonization is designed to format summary statistics based on GWASLab through the pipeline [gwaspipe](https://github.com/ht-diva/gwaspipe/tree/main). This allows to compare literature tables with the harmonized BELIEVE summary statistics hosted on tileDB (GWASStudio).
-
-### Harmonization steps
 
 **Harmonization** includes the following **steps**:
 
@@ -119,8 +117,10 @@ Literature harmonization is designed to format summary statistics based on GWASL
 - Fix chromosome notation (CHR), basepair positions (POS) and alleles (EA and NEA).
 - Sanity check on statistics.
 - Infer genome reference build version.
-- Align alleles sorting them alphabetically. Precisely EA is the effect allele for which BETA is estimated, and EA is alphabetically lower than NEA (in case, flip the alleles to match the alphabetical order).
-- Flip allele-specific statistics for mismatches: BETA = - BETA; Z = - Z; EAF = 1 - EAF.
+- Align alleles by sorting them alphabetically. Precisely:
+  - Single-length alleles come after multi-length
+  - Alphabetical ordering within same length
+- Flip allele-specific statistics after allele re-ordering: BETA = - BETA; Z = - Z; EAF = 1 - EAF.
 - Build SNPID column (CHR:POS:EA:NEA).
 - Re-name and re-order columns based on GWASLab format.
 

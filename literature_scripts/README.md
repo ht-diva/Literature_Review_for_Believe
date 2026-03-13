@@ -53,7 +53,7 @@ The generated `literature_gwasstudio_files` folder will contain all required GWA
 To execute the GWASStudio export of cohort-specific lead SNPs, run the following command:
 
 ```
-sbatch literature_gwasstudio_files/un_gwasstudio_*.sbatch
+sbatch literature_gwasstudio_files/run_gwasstudio_*.sbatch
 ```
 
 ### Notes
