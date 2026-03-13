@@ -1,8 +1,8 @@
 # Make Literature Table for deCODE 2023 
 
 We extracted the variants listed in the Supplementary Table 19 from Eldjarn et al. (2023) (ST19) to:
-- correctly classify alleles as effect and non-effect alleles (ST19 defines alleles as major and minor without specify the effect allele);
-- obtain full statstics with higher decimal accuracy (SE and ImpMAF are missing in ST19).
+- correctly classify alleles as effect and non-effect alleles (ST19 defines alleles as major and minor without specifying the effect allele);
+- obtain full statistics with higher decimal accuracy (SE and ImpMAF are missing in ST19).
 
 Additionally, we performed a quality check to exclude monomorphic alleles and verify the correct statistical and allele match after SNP extraction.
 
