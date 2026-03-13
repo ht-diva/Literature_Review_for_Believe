@@ -20,8 +20,8 @@ class PathManager:
         gwasstudio_output_path = 'gwasstudio_output'
 
         self.inputs = {
-            'literature_table_raw' : Path(root, literature_table_path, 'literature_table_all_somalogic.xlsx'),
-            'literature_table' : Path(root, literature_table_path, 'literature_table_all_somalogic_cleaned.xlsx'),
+            'literature_table_raw' : Path(root_project, literature_table_path, 'literature_table_all_somalogic.xlsx'),
+            'literature_table' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_cleaned.xlsx'),
         }
         self.config = {
             'config_harmonize' : Path(root_project, literature_config_path, 'config_harmonize.yml'),
