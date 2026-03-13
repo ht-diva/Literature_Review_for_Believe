@@ -1,0 +1,16 @@
+name: literature_harmonization
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.10.*
+  - pip
+  - pandas
+  - numpy
+  - openpyxl
+  - ruamel.yaml
+  - click
+  - cloup
+  - pip:
+      - git+https://github.com/ht-diva/gwaspipe.git@main

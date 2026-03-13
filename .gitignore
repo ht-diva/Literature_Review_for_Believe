@@ -1,0 +1,14 @@
+# Folders/files with sensitive information
+literature_table/
+literature_files/pqtl_decode_2023/decode_2023_leadsnp_sumstats
+literature_files/pqtl_decode_2023/decode_2023_alleles_mismatch.csv
+literature_files/pqtl_decode_2023/decode_2023_filenames_list.txt
+literature_files/pqtl_decode_2023/decode_2023_filenames.csv
+literature_files/pqtl_decode_2023/decode_2023_missing.csv
+literature_files/pqtl_decode_2023/decode_2023_stats_mismatch.csv
+literature_files/pqtl_decode_2023/pqtl_decode_2023_leadsnps.csv
+
+# Cache
+literature_scripts/scripts/__pycache__
+
+.DS_Store

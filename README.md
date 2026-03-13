@@ -3,7 +3,7 @@
 **Authors:**
 - Giulia Pontali, Lucia Piubeni, Solène Cadiou, Claudia Giambartolomei
 
-### Aim ###
+## Literature Review Aim ##
 The objective of this work is to develop a standardized literature table to evaluate whether the cis-protein quantitative trait loci (pQTL) signals identified in the INTERVAL-CHRIS meta-analysis represent novel discoveries. To achieve this, we focus on four of the largest European pQTL studies in the literature, all of which utilized the Somalogic proteomic platform -the same platform used in our analysis-.
 
 - Sun et al., 2018 (DOI: 10.1038/s41586-018-0175-2)
@@ -17,7 +17,7 @@ Additionally, we included the Sun et al. 2023 UK Biobank study (DOI: 10.1038/s41
 We also aim to apply the same approach for the Believe study by including a non-European population to ensure a broader spectrum for determining whether a signal is new or not. 
 
 ## Starting point ##
-We still need to discuss with Adam on the 19th of March to finalize which other studies to include in our analysis. However, in the meantime, the work can begin with the ARIC study as a non-European dataset to start familiarizing with the process (you can download the ARIC table here: https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/files).
+We still need to discuss with Adam on the 19th of March to finalize which other studies to include in our analysis. However, in the meantime, the work can begin with the ARIC study as a non-European dataset to start familiarizing with the process (you can download the ARIC table here: https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_files).
 </br>
 </br>
 All literature files must be standardized using the following column names:
@@ -104,3 +104,33 @@ data$minuslog10pval <- as.numeric(-log10(pval))
 - **TECHNOLOGY**
 - **Unit**
 
+
+## Literature Harmonization & Lead SNPs Export ##
+
+### Aim
+
+Literature harmonization is designed to format summary statistics based on GWASLab through the pipeline [gwaspipe](https://github.com/ht-diva/gwaspipe/tree/main). This allows to compare literature tables with the harmonized BELIEVE summary statistics hosted on tileDB (GWASStudio).
+
+### Harmonization steps
+
+**Harmonization** includes the following **steps**:
+
+- Check SNP identifiers (SNPID/rsID).
+- Fix chromosome notation (CHR), basepair positions (POS) and alleles (EA and NEA).
+- Sanity check on statistics.
+- Infer genome reference build version.
+- Align alleles sorting them alphabetically. Precisely EA is the effect allele for which BETA is estimated, and EA is alphabetically lower than NEA (in case, flip the alleles to match the alphabetical order).
+- Flip allele-specific statistics for mismatches: BETA = - BETA; Z = - Z; EAF = 1 - EAF.
+- Build SNPID column (CHR:POS:EA:NEA).
+- Re-name and re-order columns based on GWASLab format.
+
+### Lead SNPs Export
+
+[GWASStudio](https://github.com/ht-diva/gwasstudio) was used to conduct locus-level replication analyses for each published lead SNP reported in the harmonized literature tables. The GWASStudio command `--get-regions-leadsnps` defined a genomic windows of given width (cis = gene ±500 kb; trans, or if not specified in the source study = lead SNP ±1 Mb) around each published lead SNP and extracted from this window the BELIEVE GWAS summary statistics (MLOG10P, BETA and SE) of:
+
+* the exact SNP, i.e. the exact CHR:POS:EA:NEA of the input
+* the lead SNP, i.e. the SNPID with the most significant P-value
+
+### How to run
+
+To run all the harmonization and GWASStudio analyses, please see https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_scripts/scripts/README.md.
