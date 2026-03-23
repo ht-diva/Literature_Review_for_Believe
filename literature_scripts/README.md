@@ -1,4 +1,4 @@
-# BELIEVE Forward Replication
+# BELIEVE Harmonization & Lead SNPs Export
 
 To install all required dependencies (first time), run the following command:
 
@@ -14,7 +14,15 @@ Before harmonization, the original literature table `literature_table_all_somalo
 make clean_table
 ```
 
-Cleaning includes: (1) preliminary sanity checks for SeqIDs and UniProt IDs, (2) adding two additional studies, i.e. `pqtl_interval_chris_meta` and `pqtl_sun_ukb_csa`.
+Cleaning includes: 
+
+1. preliminary sanity checks for SeqIDs and UniProt IDs
+2. change mismatched UniProts to UniProt format in BELIEVE Metadata
+3. report literature's SEQIDs and UniProts missing in BELIEVE Metadata
+4. addinng additional studies: 
+    - `pqtl_interval_chris_meta` 
+    - `pqtl_sun_ukb_csa`
+    - `pqtl_decode_2023` (fore more details on table generation, see [here](https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_files/pqtl_decode_2023))
 
 ## 1. Literature Table Harmonization
 
