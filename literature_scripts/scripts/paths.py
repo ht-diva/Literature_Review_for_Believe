@@ -5,10 +5,8 @@ class PathManager:
     def __init__(self):
         root = Path(
             '/exchange/healthds/pQTL/BELIEVE')
-        if not root.exists():
-            exit("Path not found: {}".format(root))
-        else:
-            self._root_path = root
+        #if not root.exists():
+        #    exit("Path not found: {}".format(root))
         this_file = Path(__file__).resolve()
         root_project = this_file.parents[2]
 

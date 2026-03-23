@@ -64,7 +64,11 @@ believe_metadata["trait_protein_ids"] = (believe_metadata["trait_protein_ids"].s
 skip_sheets = {"credits", "variant", "protein", "olink", "cohort", "study"}
 xls = pd.ExcelFile(LITERATURE_INPUT)
 uniprot_check_df = []
-uniprot_check_out = LITERATURE_INPUT_DIR / "uniprot_check.tsv"
+uniprot_check_out = LITERATURE_INPUT_DIR / "change_uniprots.tsv"
+missing_seqid_df = []
+missing_seqid_out = LITERATURE_INPUT_DIR / "missing_seqids.tsv"
+missing_uniprot_df = []
+missing_uniprot_out = LITERATURE_INPUT_DIR / "missing_uniprots.tsv"
 
 with pd.ExcelWriter(OUTPUT) as writer:
     for sheet in xls.sheet_names:
@@ -83,7 +87,8 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # Allele check: "S" or "!" are excluded
         # SeqID format check
         # UniProt check against BELIEVE annotated metadata
-        df = sanity_check(df, cohort, believe_metadata, uniprot_check_df)
+        # Find missing SeqID and UniProt against BELIEVE annotated metadata
+        df = sanity_check(df, cohort, believe_metadata, uniprot_check_df, missing_seqid_df, missing_uniprot_df)
 
 
         # ---- SAVE ----
@@ -96,7 +101,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # deCODE 2023 to literature review format
         if sheet == "pqtl_decode":
             new_sheet = "pqtl_decode_2023"
-            logging.info(f"=== Processing {new_sheet} ===")
+            logging.info(f"=== Processing {[str(new_sheet)]} ===")
             logging.info(f"Extracting: {new_sheet}")
 
             df = pd.read_csv(DECODE_2023, sep="\t", 
@@ -130,7 +135,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # UKB-PPP to literature review format
         if sheet == "pqtl_sun_ukb":
             new_sheet = sheet + "_csa"
-            logging.info(f"=== Processing {new_sheet} ===")
+            logging.info(f"=== Processing {[str(new_sheet)]} ===")
             logging.info(f"Extracting: {new_sheet}")
 
             df = pd.read_csv(SUN_UKB_NONEU, sep=";")
@@ -151,7 +156,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # Meta-analysis to literature review format
         if sheet == "pqtl_sun":
             new_sheet = "pqtl_interval_chris_meta"
-            logging.info(f"=== Processing {new_sheet} ===")
+            logging.info(f"=== Processing {[str(new_sheet)]} ===")
             logging.info(f"Extracting: {new_sheet}")
 
             df = pd.read_csv(INTERVAL_CHRIS_META, sep=";",
@@ -167,7 +172,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # Format, sanity check and save new sheets
         if new_sheet != sheet:
             df = format_and_dtype(df, DTYPE_MAP, NUMERIC_COLS)
-            df = sanity_check(df, cohort, believe_metadata, uniprot_check_df)
+            df = sanity_check(df, cohort, believe_metadata, uniprot_check_df, missing_seqid_df, missing_uniprot_df)
             print(f"Writing sheet: {new_sheet}")
             df.to_excel(writer, sheet_name=new_sheet, index=False)
 
@@ -179,6 +184,33 @@ if uniprot_check_df:
     cols = [c for c in uniprot_check_df.columns if c != "UniProt"] + ["UniProt"]
     uniprot_check_df = uniprot_check_df[cols]
     uniprot_check_df.to_csv(uniprot_check_out, sep="\t", index=False)
-    print(f"\nWritten UniProt correction table: {uniprot_check_out}")
+    print(f" - Written UniProt correction table to: {uniprot_check_out}")
 
-print(f"\nWritten cleaned literature table to: {OUTPUT}")
+
+# ---- SAVE MISSING SEQIDs ----
+if missing_seqid_df:
+    missing_seqid_df = pd.concat(missing_seqid_df, ignore_index=True)
+    missing_seqid_df.to_csv(missing_seqid_out, sep="\t", index=False)
+    print(f" - Written Missing SEQIDs table to: {missing_seqid_out}")
+    print("\n=== MISSING SEQIDs ===")
+    summary_df = missing_seqid_df.groupby("COHORT").agg(
+        SeqID_missing=("SeqID_missing", 'nunique'),
+        Variants_missing=("COHORT", 'size'),
+        Variants_SeqID_found_in_BELIEVE=("SeqID_Metadata", lambda x: x.notna().sum())
+    ).reset_index()
+    print(summary_df)
+    print("\n")
+else:
+    print(f" - No Missing SEQIDs")
+
+
+# ---- SAVE MISSING UNIPROTs ----
+if missing_uniprot_df:
+    missing_uniprot_df = pd.concat(missing_uniprot_df, ignore_index=True)
+    missing_uniprot_df.to_csv(missing_uniprot_out, sep="\t", index=False)
+    print(f" - Written Missing UniProts table to: {missing_uniprot_out}")
+else:
+    print(f" - No Missing UniProts")
+
+
+print(f" - Written cleaned literature table to: {OUTPUT}")

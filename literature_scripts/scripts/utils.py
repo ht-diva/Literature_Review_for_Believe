@@ -8,7 +8,7 @@ from scipy.stats import norm
 
 
 # ---- SANITY CHECK FUNCTION ----
-def sanity_check(df, cohort, believe_metadata, uniprot_check_df):
+def sanity_check(df, cohort, believe_metadata, uniprot_check_df, missing_seqid_df, missing_uniprot_df):
 
 
     # ---- ALLELE CHECK ----
@@ -57,6 +57,10 @@ def sanity_check(df, cohort, believe_metadata, uniprot_check_df):
         # ---- UNIPROT CHECK ----
         uniprot_check(df, believe_metadata, uniprot_check_df)
 
+
+        # ---- MISSING SEQID AND UNIPROT ----
+        missing_seqid_uniprot(df, believe_metadata, missing_seqid_df, missing_uniprot_df)
+
     return df
 
 
@@ -75,9 +79,67 @@ def uniprot_check(df, believe_metadata, uniprot_check_df):
     df.loc[mask, "UniProt"] = (merged.loc[mask, "trait_protein_ids"].to_numpy())
     
     if n_fixed_uniprot > 0:
-        uniprot_check_df.append(df.loc[df["UniProt"] != df["UniProt_orig"]].copy())
+        uniprot_check_df.append(df.loc[
+            df["UniProt"] != df["UniProt_orig"],
+            ["COHORT", "pqtlID", "rsID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "OlinkID", "UniProt_orig", "UniProt"]
+        ].copy())
         logging.info(f"{cohort}: Fixed {n_fixed_uniprot} UniProt mismatches using BELIEVE metadata")
     df.drop(columns=["UniProt_orig"], inplace=True)
+
+
+# Check missing SeqIDs and UniProts against BELIEVE annotated metadata
+def missing_seqid_uniprot(df, believe_metadata, missing_seqid_df, missing_uniprot_df):
+    cohort = df["COHORT"].unique()
+
+    # OLINK COHORTS
+    if df["SeqID"].isna().all():
+
+        # Missing UniProts
+        missing_uniprots = set(df["UniProt"]) - set(believe_metadata["trait_protein_ids"])
+        logging.info(f"Missing UniProts in BELIEVE: {len(missing_uniprots)}")
+
+        missing_uniprot_df.append(pd.DataFrame({
+            "COHORT": [cohort[0]] * len(missing_uniprots),
+            "UniProt_missing": list(missing_uniprots)
+        }))
+        logging.info(f" - Corresponding missing variants: {len(missing_uniprot_df)}")
+
+    # SOMASCAN COHORTS
+    else:
+
+        # Missing SeqIDs
+        missing_seqids = set(df["SeqID"]) - set(believe_metadata["SeqID"])
+        logging.info(f"Missing SEQIDs in BELIEVE: {len(missing_seqids)}")
+
+        # UniProt for missing SeqIDs
+        df_uniprots = df.loc[
+            df["SeqID"].isin(missing_seqids), 
+            ["COHORT", "pqtlID", "rsID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "UniProt"]
+        ].copy()
+        merged = df_uniprots.merge(
+            believe_metadata[["SeqID", "trait_protein_ids"]],
+            left_on="UniProt",
+            right_on="trait_protein_ids",
+            how="left"
+        )
+        logging.info(f" - Corresponding missing variants: {len(merged)}")
+        found_seqids_nr = len(merged.loc[merged["trait_protein_ids"].notna()])
+        logging.info(f" - ... of which alternative SEQID found in BELIEVE Metadata (via UniProt): "
+                     f"{found_seqids_nr}")
+
+        missing_seqid_df.append(pd.DataFrame({
+            "COHORT": merged["COHORT"],
+            "pqtlID": merged["pqtlID"],
+            "rsID": merged["rsID"],
+            "chr": merged["chr"],
+            "pos38": merged["pos38"],
+            "OTHER_ALLELE": merged["OTHER_ALLELE"],
+            "EFFECT_ALLELE": merged["EFFECT_ALLELE"],
+            "SeqID_missing": merged["SeqID_x"],
+            "UniProt_Cohort": merged["UniProt"],
+            "UniProt_Metadata": merged["trait_protein_ids"],
+            "SeqID_Metadata": merged["SeqID_y"]
+        }))
 
 
 # Set column format and data types
