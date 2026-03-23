@@ -202,8 +202,8 @@ def build_search_file(
     output_prefix.mkdir(parents=True, exist_ok=True)
     output_prefix.chmod(0o2775)
 
-    MIN_PER_GWAS = 2
-    SAFETY_FACTOR = 1.5
+    MIN_PER_GWAS = 1.5
+    SAFETY_FACTOR = 1.15
     MAX_TIME_MIN = 1440
     DEFAULT_WORKERS = 4
     MAX_WORKERS = 16
