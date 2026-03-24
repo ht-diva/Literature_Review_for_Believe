@@ -185,6 +185,13 @@ if uniprot_check_df:
     uniprot_check_df = uniprot_check_df[cols]
     uniprot_check_df.to_csv(uniprot_check_out, sep="\t", index=False)
     print(f" - Written UniProt correction table to: {uniprot_check_out}")
+    print("\n=== CHANGED UNIPROTs ===")
+    summary_df = uniprot_check_df.groupby("COHORT").agg(
+        UniProt_changed=("UniProt_orig", 'nunique'),
+        Variants_affected=("COHORT", 'size')
+    ).reset_index()
+    print(summary_df)
+    print("\n")
 
 
 # ---- SAVE MISSING SEQIDs ----
@@ -196,7 +203,7 @@ if missing_seqid_df:
     summary_df = missing_seqid_df.groupby("COHORT").agg(
         SeqID_missing=("SeqID_missing", 'nunique'),
         Variants_missing=("COHORT", 'size'),
-        Variants_SeqID_found_in_BELIEVE=("SeqID_Metadata", lambda x: x.notna().sum())
+        Variants_SeqID_found_in_BELIEVE=("UniProt_Metadata", lambda x: x.notna().sum())
     ).reset_index()
     print(summary_df)
     print("\n")

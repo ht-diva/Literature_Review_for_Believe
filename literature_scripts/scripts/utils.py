@@ -64,26 +64,47 @@ def sanity_check(df, cohort, believe_metadata, uniprot_check_df, missing_seqid_d
     return df
 
 
+
 # ---- SANITY CHECK HELPER FUNCTIONS ----
+
 
 # Check UniProt against BELIEVE annotated metadata
 def uniprot_check(df, believe_metadata, uniprot_check_df):
     cohort = df["COHORT"].unique()
     
+    # Merge with BELIEVE Metadata by SEQID
     df["UniProt_orig"] = df["UniProt"].copy()
     df["UniProt"] = df["UniProt"].str.strip().str.upper()
     merged = df.merge(believe_metadata[["SeqID", "trait_protein_ids"]], on="SeqID", how="left")
+
+    # Count mismatched UniProts
     uniprot_mismatch_mask = (merged["trait_protein_ids"].notna() & (merged["UniProt"] != merged["trait_protein_ids"]))
     n_fixed_uniprot = uniprot_mismatch_mask.sum()
-    mask = uniprot_mismatch_mask.to_numpy()
-    df.loc[mask, "UniProt"] = (merged.loc[mask, "trait_protein_ids"].to_numpy())
-    
+ 
     if n_fixed_uniprot > 0:
-        uniprot_check_df.append(df.loc[
+
+        # Replace mismatched UniProts
+        mask = uniprot_mismatch_mask.to_numpy()
+        df.loc[mask, "UniProt"] = (merged.loc[mask, "trait_protein_ids"].to_numpy())
+
+        # Store mismatched UniProts
+        uniprot_mismatch_df = df.loc[
             df["UniProt"] != df["UniProt_orig"],
-            ["COHORT", "pqtlID", "rsID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "OlinkID", "UniProt_orig", "UniProt"]
-        ].copy())
+            ["COHORT", "pqtlID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "OlinkID", "UniProt_orig", "UniProt"]
+        ].copy()
+
+        # Make SNPID
+        uniprot_mismatch_df["SNPID"] = (
+            uniprot_mismatch_df["chr"].astype(str) + ":" +
+            uniprot_mismatch_df["pos38"].astype(int).astype(str) + ":" +
+            uniprot_mismatch_df["EFFECT_ALLELE"].astype(str) + ":" +
+            uniprot_mismatch_df["OTHER_ALLELE"].astype(str)
+        )
+        uniprot_mismatch_df = uniprot_mismatch_df[["COHORT", "pqtlID", "SNPID", "SeqID", "OlinkID", "UniProt_orig", "UniProt"]]
+
+        uniprot_check_df.append(uniprot_mismatch_df)
         logging.info(f"{cohort}: Fixed {n_fixed_uniprot} UniProt mismatches using BELIEVE metadata")
+
     df.drop(columns=["UniProt_orig"], inplace=True)
 
 
@@ -114,14 +135,30 @@ def missing_seqid_uniprot(df, believe_metadata, missing_seqid_df, missing_unipro
         # UniProt for missing SeqIDs
         df_uniprots = df.loc[
             df["SeqID"].isin(missing_seqids), 
-            ["COHORT", "pqtlID", "rsID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "UniProt"]
+            ["COHORT", "pqtlID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "UniProt"]
         ].copy()
+
+        # Make SNPID
+        df_uniprots["SNPID"] = (
+            df_uniprots["chr"].astype(str) + ":" +
+            df_uniprots["pos38"].astype(int).astype(str) + ":" +
+            df_uniprots["EFFECT_ALLELE"].astype(str) + ":" +
+            df_uniprots["OTHER_ALLELE"].astype(str)
+        )
+
+        # Merge with BELIEVE Metadata by UniProt
         merged = df_uniprots.merge(
             believe_metadata[["SeqID", "trait_protein_ids"]],
             left_on="UniProt",
             right_on="trait_protein_ids",
             how="left"
-        )
+        ).drop_duplicates()
+
+        # Group multiple SEQIDs per UniProt
+        merged = merged.groupby(["COHORT", "pqtlID", "SNPID", "SeqID_x", "UniProt", "trait_protein_ids"], dropna=False).agg({
+            "SeqID_y": lambda x: ", ".join(x.dropna().unique())
+        }).reset_index().drop_duplicates()
+
         logging.info(f" - Corresponding missing variants: {len(merged)}")
         found_seqids_nr = len(merged.loc[merged["trait_protein_ids"].notna()])
         logging.info(f" - ... of which alternative SEQID found in BELIEVE Metadata (via UniProt): "
@@ -130,11 +167,7 @@ def missing_seqid_uniprot(df, believe_metadata, missing_seqid_df, missing_unipro
         missing_seqid_df.append(pd.DataFrame({
             "COHORT": merged["COHORT"],
             "pqtlID": merged["pqtlID"],
-            "rsID": merged["rsID"],
-            "chr": merged["chr"],
-            "pos38": merged["pos38"],
-            "OTHER_ALLELE": merged["OTHER_ALLELE"],
-            "EFFECT_ALLELE": merged["EFFECT_ALLELE"],
+            "SNPID": merged["SNPID"],
             "SeqID_missing": merged["SeqID_x"],
             "UniProt_Cohort": merged["UniProt"],
             "UniProt_Metadata": merged["trait_protein_ids"],
