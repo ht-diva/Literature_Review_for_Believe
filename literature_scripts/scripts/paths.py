@@ -24,6 +24,8 @@ class PathManager:
         self.config = {
             'config_harmonize' : Path(root_project, literature_config_path, 'config_harmonize.yml'),
             'believe_metadata' : Path(root_project, literature_config_path, 'believe_metadata.tsv'),
+            'literature_panel' : Path(root_project, literature_config_path, 'literature_protein_panel.tsv'),
+            'panels_map' : Path(root_project, literature_config_path, 'believe_literature_panels_map.tsv'),
         }
         self.files = {
             'pqtl_sun_ukb_csa' : Path(root_project, literature_files_path, 'sun_ukb_st11.csv'),

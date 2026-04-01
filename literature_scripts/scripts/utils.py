@@ -7,8 +7,205 @@ from scipy.stats import norm
 
 
 
-# ---- SANITY CHECK FUNCTION ----
-def sanity_check(df, cohort, believe_metadata, uniprot_check_df, missing_seqid_df, missing_uniprot_df):
+# ---- HELPER FUNCTIONS ----
+
+
+# Helper function to align swapped multi-Prots
+# Example: P29460|Q9NPF7 <-> Q9NPF7|P29460
+def swap_uniprots(df, uniprot1, uniprot2):
+    df[uniprot1] = df[uniprot1].fillna("")
+    df[uniprot2] = df[uniprot2].fillna("")
+    uniprot1_set = df[uniprot1].str.split("|").apply(lambda x: set(sorted(x)))
+    uniprot2_set = df[uniprot2].str.split("|").apply(lambda x: set(sorted(x)))
+    mask = (
+        (uniprot1_set == uniprot2_set) &
+        (df[uniprot1] != df[uniprot2])
+    )
+    return mask
+
+
+# Helper function to check (multi-)UniProt match
+# Example P29460|Q9NPF7 matches P29460 and Q9NPF7
+def is_uniprot_match(row, uniprot1, uniprot2):
+    uniprot1set = set(str(row[uniprot1]).split("|") if pd.notna(row[uniprot1]) else [])
+    uniprot2set = set(str(row[uniprot2]).split("|") if pd.notna(row[uniprot2]) else [])
+    return uniprot1set.issubset(uniprot2set) or uniprot2set.issubset(uniprot1set)
+
+
+# Set column format and data types
+def format_and_dtype(df, dtype_map, numeric_cols):
+
+    expected_cols = list(dtype_map.keys())
+
+    # Add missing columns
+    missing_cols = [c for c in expected_cols if c not in df.columns]
+    df = df.assign(**{c: pd.NA for c in missing_cols})
+
+    # Reorder columns: expected first, extras last
+    ordered_cols = expected_cols + [c for c in df.columns if c not in expected_cols]
+    df = df[ordered_cols]
+
+    # Numeric coercion
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(
+                df[col].astype(str).str.replace(",", ".", regex=False),
+                errors="coerce"
+            )
+
+    # Apply dtypes
+    for col, dtype in dtype_map.items():
+        if col in df.columns:
+            try:
+                df[col] = df[col].astype(dtype)
+            except Exception as e:
+                logging.warning(f"Could not cast {col} to {dtype}: {e}")
+
+    return df
+
+
+# Helper function to find the best ID to match BELIEVE and Literature Protein Panels
+# IDs are:
+#   "Target_Name"
+#   "SeqID"
+#   "Ensembl_Gene_ID"
+#   "UniProt"
+def best_id_match(believe_metadata, literature_panel):
+
+    # Count matches
+    matches = {
+        "Target_Name": 0,
+        "SeqID": 0,
+        "Ensembl_Gene_ID": 0,
+        "UniProt": 0
+    }
+
+    for col in matches.keys():
+        merged = pd.merge(
+            believe_metadata[[col]],
+            literature_panel[[col]],
+            on=col,
+            how="inner"
+        ).drop_duplicates()
+        matches[col] = len(merged)
+
+    for col, count in matches.items():
+        logging.info(f"> Number of matches for {col}: {count} on {len(believe_metadata)}.")
+
+    # Best match
+    best_match = max(matches, key=matches.get)
+    best_count = matches[best_match]
+    logging.info(f"> ID with the maximum matches: {best_match} ({best_count} matches).")
+
+    # Missing match
+    all_matches = pd.merge(
+        believe_metadata[[best_match]],
+        literature_panel[[best_match]],
+        on=best_match,
+        how="inner"
+    ).drop_duplicates()
+    missing_matches = believe_metadata[~believe_metadata[best_match].isin(all_matches[best_match])]
+
+    if len(missing_matches) > 0:
+        logging.info(f"> Missing {best_match}: {missing_matches}.")
+    else:
+        logging.info(f"> All matched by {best_match}.")
+
+    return best_match
+
+
+
+# ---- MAP PROTEIN PANELS FUNCTION ----
+
+
+# Function to map BELIEVE and Literature Protein Panels
+def make_panels_mapping(believe_metadata_path, literature_panel_path, panels_map_path):
+
+    logging.info("=== Map BELIEVE and Literature Protein Panels ===")
+
+    # Read BELIEVE Panel derived from SomaScan Annotated Panel 7k
+    believe_metadata = pd.read_csv(believe_metadata_path, sep="\t", usecols=["trait_desc", "trait_seqid", "trait_gene_ids", "trait_protein_ids"])
+    believe_metadata = believe_metadata.rename(columns={
+        "trait_desc": "Target_Name",
+        "trait_seqid": "SeqID",
+        "trait_gene_ids": "Ensembl_Gene_ID",
+        "trait_protein_ids": "UniProt",
+        })
+    believe_metadata["UniProt"] = (believe_metadata["UniProt"].str.strip().str.upper())
+
+    # Read Literature Protein Panel
+    literature_panel = pd.read_csv(literature_panel_path, sep="\t", usecols=["Target_Name", "SeqID", "Ensembl_Gene_ID", "UniProt"])
+    literature_panel.loc[:, "SeqID"] = literature_panel.loc[:, "SeqID"].replace("_", "-", regex=True)
+
+    # Get best ID to match BELIEVE and Literature Protein Panels 
+    best_match = best_id_match(believe_metadata, literature_panel)
+
+    merged = pd.merge(
+        believe_metadata[["Target_Name", best_match, "UniProt"]],
+        literature_panel[[best_match, "UniProt"]],
+        on=best_match,
+        how="inner"
+    ).drop_duplicates().reset_index(drop=True)
+
+    # Align swapped multi-Prots
+    # Example: P29460|Q9NPF7 <-> Q9NPF7|P29460
+    mask = swap_uniprots(merged, "UniProt_x", "UniProt_y")
+    merged.loc[mask, "UniProt_y"] = merged.loc[mask, "UniProt_x"]
+    merged = merged.drop_duplicates().reset_index(drop=True)
+
+    # Check multiple UniProts per SeqID
+    multi_uniprots_per_seqid = len(merged[merged.duplicated(subset=best_match, keep="first")])
+
+    # Group by SeqID and aggregate multiple UniProt (literature) values
+    if multi_uniprots_per_seqid > 0:
+        logging.info(f"> SeqIDs with multiple UniProts: {multi_uniprots_per_seqid}.")
+        merged = (
+            merged.groupby(best_match)
+            .agg({
+                "Target_Name": "first",
+                "UniProt_x": "first",
+                "UniProt_y": lambda x: ", ".join(sorted(set(filter(None, x))))
+            })
+            .reset_index()
+        )
+
+    # Check matching UniProts
+    merged["UniProt_Match"] = merged.apply(
+        lambda row: is_uniprot_match(row, "UniProt_x", "UniProt_y"),
+        axis=1
+    )
+    uniprot_match_df = merged[merged["UniProt_Match"]].reset_index(drop=True)
+    uniprot_mismatch_df = merged[~merged["UniProt_Match"]].reset_index(drop=True)
+    merged = pd.concat([uniprot_match_df, uniprot_mismatch_df]).reset_index(drop=True)
+    uniprot_mismatch_var_nr = len(uniprot_mismatch_df)
+    uniprot_mismatch_nr = len(set(uniprot_mismatch_df["UniProt_y"]))
+    if uniprot_mismatch_nr > 0:
+        logging.info(f"> Mismatched UniProts: {uniprot_mismatch_nr}. Variants affected: {uniprot_mismatch_var_nr}.")
+    else:
+        logging.info("> No Mismatched UniProt.")
+
+    # Format and Save
+    panels_map = merged.rename(columns={
+        "UniProt_x": "UniProt_BELIEVE",
+        "UniProt_y": "UniProt_Literature"
+    })
+    panels_map["SeqID"] = "seq." + panels_map["SeqID"].str.replace("-", ".", regex=False)
+
+    panels_map.to_csv(panels_map_path, sep="\t", index=False)
+    logging.info(f"> Written mapping file of BELIEVE and Literature Protein Panels to: {panels_map_path}")
+
+    return panels_map
+
+
+
+# ---- MAIN SANITY CHECK FUNCTION ----
+
+
+# Allele check: "S" or "!" are excluded
+# SeqID format check
+# UniProt check against BELIEVE and Literature Protein Panels
+# Find missing SeqID and UniProt against BELIEVE and Literature Protein Panels
+def sanity_check(df, cohort, panels_map, uniprot_check_df, missing_seqid_df, missing_uniprot_df):
 
     logging.info(f"Sanity check for {cohort}")
 
@@ -56,38 +253,25 @@ def sanity_check(df, cohort, believe_metadata, uniprot_check_df, missing_seqid_d
             logging.info(f"Updated {n_fixed} malformed SEQIDs and pqtlIDs")
 
 
-        # ---- UNIPROT CHECK ----
-        uniprot_check(df, cohort, believe_metadata, uniprot_check_df)
+    # ---- UNIPROT CHECK / FORMATTING ----
+    df = uniprot_check(df, cohort, panels_map, uniprot_check_df)
 
 
     # ---- MISSING SEQID AND UNIPROT ----
-    missing_seqid_uniprot(df, cohort, believe_metadata, missing_seqid_df, missing_uniprot_df)
+    missing_seqid_uniprot(df, cohort, panels_map, missing_seqid_df, missing_uniprot_df)
 
     return df
 
 
 
-# ---- SANITY CHECK HELPER FUNCTIONS ----
+# ---- UNIPROT FORMAT & MATCH FUNCTION ----
 
 
-# Check UniProt against BELIEVE annotated metadata
-def uniprot_check(df, cohort, believe_metadata, uniprot_check_df):
+# Check UniProt against BELIEVE and Literature Protein Panels
+def uniprot_check(df, cohort, panels_map, uniprot_check_df):
 
-    logging.info(f" - UniProt correction for for {cohort}")
 
-    # Format if harmonized table
-    if "SNPID" in df:
-        df = df.rename(columns={
-            "PQTLID" : "pqtlID",
-            "CHR" : "chr",
-            "POS" : "pos38",
-            "NEA" : "OTHER_ALLELE",
-            "EA" : "EFFECT_ALLELE",
-            "SEQID" : "SeqID",
-            "UNIPROT" : "UniProt"
-        })
-    
-    # Clean UniProts
+    # ---- CLEAN UNIPROT ----
     df["UniProt"] = (
         df["UniProt"]
         .fillna("")  # Fill NaN values with empty string
@@ -97,214 +281,169 @@ def uniprot_check(df, cohort, believe_metadata, uniprot_check_df):
         .str.replace(r'\s+', '|', regex=True)  # Replace any remaining spaces with |
     )
 
-    # Merge with BELIEVE Metadata by SEQID
-    merged = df.merge(
-        believe_metadata[["SeqID", "trait_protein_ids"]], 
-        on="SeqID", 
-        how="left"
-    )
 
-    # Align swapped multi-Prots with same components
-    # Example: P29460|Q9NPF7 <-> Q9NPF7|P29460
-    merged["UniProt"] = merged["UniProt"].fillna("")
-    merged["trait_protein_ids"] = merged["trait_protein_ids"].fillna("")
-    uniprot_sets = merged["UniProt"].str.split("|").apply(lambda x: set(sorted(x)))
-    trait_sets = merged["trait_protein_ids"].str.split("|").apply(lambda x: set(sorted(x)))
-    mask = (
-        (uniprot_sets == trait_sets) &
-        (merged["trait_protein_ids"] != "") &
-        (merged["UniProt"] != merged["trait_protein_ids"])
-    )
-    merged.loc[mask, "UniProt"] = merged.loc[mask, "trait_protein_ids"]
+    # ---- CHECK UNIPROT MATCH cf. BELIEVE ----
 
-    # Update cleaned UniProts
-    df.loc[mask, "UniProt"] = merged.loc[mask, "trait_protein_ids"]
-    df["UniProt_orig"] = df["UniProt"].copy()
+    # Only SomaScan
+    if not df["SeqID"].dropna().empty:
 
-    # Count mismatched UniProts after cleaning
-    uniprot_mismatch_mask = (
-        merged["trait_protein_ids"].notna() &
-        (merged["trait_protein_ids"] != "") &
-        (merged["UniProt"] != merged["trait_protein_ids"])
-    )
-    n_fixed_uniprot = uniprot_mismatch_mask.sum()
-    logging.info(f"  |- Number of mismatched UniProt: {n_fixed_uniprot}")
-
-    # If mismatched UniProts...
-    if n_fixed_uniprot > 0:
-
-        # ...Replace mismatched UniProts
-        df.loc[uniprot_mismatch_mask, "UniProt"] = (merged.loc[uniprot_mismatch_mask, "trait_protein_ids"])
-
-        # ...Store mismatched UniProts
-        uniprot_mismatch_df = df.loc[
-            df["UniProt"] != df["UniProt_orig"],
-            ["COHORT", "pqtlID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "UniProt_orig", "UniProt"]
-        ].copy()
-
-        # ...Make SNPID
-        uniprot_mismatch_df["SNPID"] = (
-            uniprot_mismatch_df["chr"].astype(str) + ":" +
-            uniprot_mismatch_df["pos38"].astype(int).astype(str) + ":" +
-            uniprot_mismatch_df["EFFECT_ALLELE"].astype(str) + ":" +
-            uniprot_mismatch_df["OTHER_ALLELE"].astype(str)
+        # Merge with BELIEVE Metadata by SEQID
+        merged = df.merge(
+            panels_map[["SeqID", "UniProt_BELIEVE", "UniProt_Literature"]], 
+            on="SeqID", 
+            how="left"
         )
-        uniprot_mismatch_df = uniprot_mismatch_df[["COHORT", "pqtlID", "SNPID", "SeqID", "UniProt_orig", "UniProt"]]
-        uniprot_mismatch_df["COHORT"] = cohort
+        
+        # Align swapped multi-Prots
+        mask = swap_uniprots(merged, "UniProt", "UniProt_BELIEVE")
+        merged.loc[mask, "UniProt"] = merged.loc[mask, "UniProt_BELIEVE"]
+        merged = merged.drop_duplicates().reset_index(drop=True)
 
-        # Rename columns
-        uniprot_mismatch_df = uniprot_mismatch_df.rename(columns={
-            "pqtlID": "PQTLID",
-            "SeqID" : "SEQID",
-            "UniProt_orig": "UNIPROT_ORIG",
-            "UniProt" : "UNIPROT"
-        })
+        # Update aligned swapped multi-Prots
+        df.loc[mask, "UniProt"] = merged.loc[mask, "UniProt"]
 
-        uniprot_check_df.append(uniprot_mismatch_df)
-        logging.info(f"{cohort}: Fixed {n_fixed_uniprot} UniProt mismatches using BELIEVE metadata")
+        # Mismatched UniProts
+        merged["UniProt_Match"] = merged.apply(
+            lambda row: is_uniprot_match(row, "UniProt", "UniProt_Literature"),
+            axis=1
+        )
+        uniprot_mismatch_df = merged[~merged["UniProt_Match"]].reset_index(drop=True)
+        uniprot_mismatch_var_nr = len(uniprot_mismatch_df)
+        uniprot_mismatch_nr = len(set(uniprot_mismatch_df["UniProt"]))
 
-    df.drop(columns=["UniProt_orig"], inplace=True)
+        # If any mismatched UniProts...
+        if uniprot_mismatch_nr > 0:
+            logging.info(f"> Mismatched UniProts: {uniprot_mismatch_nr}. Variants affected: {uniprot_mismatch_var_nr}.")
 
+            # ...Store mismatched UniProts
+            uniprot_mismatch_df = merged.loc[~merged["UniProt_Match"]].reset_index(drop=True)
+            uniprot_mismatch_df.loc[:, "UniProt_Raw"] = uniprot_mismatch_df.loc[:, "UniProt"]
 
-# Check missing SeqIDs and UniProts against BELIEVE annotated metadata
-def missing_seqid_uniprot(df, cohort, believe_metadata, missing_seqid_df, missing_uniprot_df):
+            # ...Store mismatched UniProts to BELIEVE UniProts
+            uniprot_mismatch_df.loc[:, "UniProt"] = uniprot_mismatch_df.loc[:, "UniProt_BELIEVE"]
 
-    # Format if harmonized table
-    if "SNPID" in df:
-        df = df.rename(columns={
-            "PQTLID" : "pqtlID",
-            "CHR" : "chr",
-            "POS" : "pos38",
-            "NEA" : "OTHER_ALLELE",
-            "EA" : "EFFECT_ALLELE",
-            "SEQID" : "SeqID",
-            "UNIPROT" : "UniProt"
-        })
-
-
-    ## OLINK COHORTS
-    if df.loc[0, "TECHNOLOGY"] == "Olink":
-
-        # Missing UniProts
-        missing_uniprots = set(df["UniProt"]) - set(believe_metadata["trait_protein_ids"])
-        logging.info(f" - Missing UniProts in BELIEVE: {len(missing_uniprots)}")
-
-        if len(missing_uniprots) > 0:
-
-            # Get rows with missing UniProts
-            df_uniprots = df.loc[
-                df["UniProt"].isin(missing_uniprots), 
-                ["COHORT", "pqtlID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "UniProt"]
-            ].copy()
-
-            # Make SNPID
-            if "SNPID" not in df_uniprots:
-                df_uniprots["SNPID"] = (
-                    df_uniprots["chr"].astype(str) + ":" +
-                    df_uniprots["pos38"].astype(int).astype(str) + ":" +
-                    df_uniprots["EFFECT_ALLELE"].astype(str) + ":" +
-                    df_uniprots["OTHER_ALLELE"].astype(str)
-                )
-            df_uniprots["COHORT"] = cohort
-
-            missing_uniprot_df.append(pd.DataFrame({
-                "COHORT": df_uniprots["COHORT"],
-                "PQTlID": df_uniprots["pqtlID"],
-                "SNPID": df_uniprots["SNPID"],
-                "SEQID": df_uniprots["SeqID"],
-                "UNIPROT_MISSING": df_uniprots["UniProt"]
-            }))            
-            logging.info(f"  |- Corresponding missing variants: {len(df_uniprots)}")
-
-
-    ## SOMASCAN COHORTS
-    else:
-
-        # Missing SeqIDs
-        missing_seqids = set(df["SeqID"]) - set(believe_metadata["SeqID"])
-        logging.info(f" - Missing SEQIDs in BELIEVE: {len(missing_seqids)}")
-
-        if len(missing_seqids) > 0:
-
-            # UniProt for missing SeqIDs
-            df_uniprots = df.loc[
-                df["SeqID"].isin(missing_seqids), 
-                ["COHORT", "pqtlID", "chr", "pos38", "OTHER_ALLELE", "EFFECT_ALLELE", "SeqID", "UniProt"]
-            ].copy()
-
-            # Make SNPID
-            if "SNPID" not in df_uniprots:
-                df_uniprots["SNPID"] = (
-                    df_uniprots["chr"].astype(str) + ":" +
-                    df_uniprots["pos38"].astype(int).astype(str) + ":" +
-                    df_uniprots["EFFECT_ALLELE"].astype(str) + ":" +
-                    df_uniprots["OTHER_ALLELE"].astype(str)
-                )
-
-            # Merge with BELIEVE Metadata by UniProt
-            merged = df_uniprots.merge(
-                believe_metadata[["SeqID", "trait_protein_ids"]],
-                left_on="UniProt",
-                right_on="trait_protein_ids",
-                how="left"
+            # ...Update mismatched UniProts to BELIEVE UniProts
+            df = df.merge(
+                uniprot_mismatch_df[["SeqID", "UniProt"]],
+                on="SeqID",
+                how="left",
+                suffixes=("", "_updated")
             )
+            df.loc[df["UniProt_updated"].notna(), "UniProt"] = df.loc[df["UniProt_updated"].notna(), "UniProt_updated"]
+            logging.info(f"  |-> {uniprot_mismatch_nr} Mismatched UniProts ({len(df.UniProt_updated.notna())} variants) updated to BELIEVE UniProts.")
+            df = df.drop(columns=["UniProt_updated"])
 
-            # Group multiple SEQIDs per UniProt
-            merged = merged.groupby(["COHORT", "pqtlID", "SNPID", "SeqID_x", "UniProt", "trait_protein_ids"], dropna=False).agg({
-                "SeqID_y": lambda x: ", ".join(x.dropna().unique())
-            }).reset_index()
-            merged["COHORT"] = cohort
+            # Store results
+            uniprot_mismatch_df = uniprot_mismatch_df[
+                ["COHORT", "SeqID", "UniProt_Raw", "UniProt"]
+            ].drop_duplicates().reset_index(drop=True)
 
-            logging.info(f"  |- Corresponding missing variants: {len(merged)}")
-            found_seqids_nr = len(merged.loc[merged["trait_protein_ids"].notna()])
-            logging.info(f"  |- ... of which alternative SEQID found in BELIEVE Metadata (via UniProt): "
-                        f"{found_seqids_nr}")
+            uniprot_mismatch_df["COHORT"] = cohort
+            uniprot_mismatch_df = uniprot_mismatch_df.rename(columns={
+                "SeqID" : "SEQID",
+                "UniProt_Raw": "UNIPROT_RAW",
+                "UniProt" : "UNIPROT"
+            })
+            uniprot_check_df.append(uniprot_mismatch_df)
 
-            missing_seqid_df.append(pd.DataFrame({
-                "COHORT": merged["COHORT"],
-                "PQTLID": merged["pqtlID"],
-                "SNPID": merged["SNPID"],
-                "SEQID_MISSING": merged["SeqID_x"],
-                "UNIPROT_COHORT": merged["UniProt"],
-                "UNIPROT_BELIEVE": merged["trait_protein_ids"],
-                "SEQID_BELIEVE": merged["SeqID_y"]
-            }))
-
-
-# Set column format and data types
-def format_and_dtype(df, dtype_map, numeric_cols):
-
-    expected_cols = list(dtype_map.keys())
-
-    # Add missing columns
-    missing_cols = [c for c in expected_cols if c not in df.columns]
-    df = df.assign(**{c: pd.NA for c in missing_cols})
-
-    # Reorder columns: expected first, extras last
-    ordered_cols = expected_cols + [c for c in df.columns if c not in expected_cols]
-    df = df[ordered_cols]
-
-    # Numeric coercion
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(
-                df[col].astype(str).str.replace(",", ".", regex=False),
-                errors="coerce"
-            )
-
-    # Apply dtypes
-    for col, dtype in dtype_map.items():
-        if col in df.columns:
-            try:
-                df[col] = df[col].astype(dtype)
-            except Exception as e:
-                logging.warning(f"Could not cast {col} to {dtype}: {e}")
+        else:
+            logging.info("> No Mismatched UniProts.")
 
     return df
 
 
 
+# ---- MISSING SEQIDs & UNIPROTs FUNCTION ----
+
+
+# Check  missing SeqIDs and UniProts against BELIEVE and Literature Protein Panels
+def missing_seqid_uniprot(df, cohort, panels_map, missing_seqid_df, missing_uniprot_df):
+
+
+    # ---- CHECK MISSING SEQID ----
+
+    # Only SomaScan
+    if not df["SeqID"].dropna().empty:
+
+        # Get nr. SeqIDs/variants unmatching BELIEVE reference
+        seqid_df = df.loc[
+            ~df["SeqID"].isin(panels_map["SeqID"]) & df["SeqID"].notna()
+        ]
+        missing_seqids_var_nr = len(seqid_df)
+        missing_seqids = seqid_df["SeqID"].unique()
+        missing_seqids_nr = len(missing_seqids)
+
+         # If any missing SeqIDs...
+        if missing_seqids_nr > 0:
+            logging.info(
+                f"> Missing SeqIDs: {missing_seqids_var_nr} out of {len(set(df.SeqID))}."
+                f" Variants affected: {missing_seqids_var_nr} out of {len(df)}."
+            )
+
+            # ...Get nr. missing variants per SeqId
+            seqid_df = (
+                seqid_df[["COHORT", "SeqID", "UniProt"]]
+                .groupby(["COHORT", "SeqID"])
+                .agg(
+                    VARIANTS_NR=('SeqID', 'size'),
+                    UNIPROT=('UniProt', lambda x: ', '.join(x.unique()))
+                )
+                .reset_index()
+            )
+
+            # Format and Store results
+            seqid_df["COHORT"] = cohort
+            seqid_df = seqid_df.rename(columns={
+                "SeqID" : "SEQID_MISSING"
+            })
+            missing_seqid_df.append(seqid_df)
+
+        else:
+            logging.info("> No Missing SeqID.")
+
+
+    # ---- CHECK MISSING UNIPROT ----
+
+    # Get nr. proteins/variants unmatching BELIEVE reference
+    uniprots_df = df.loc[
+        ~df["UniProt"].isin(panels_map["UniProt_BELIEVE"]) & df["UniProt"].notna()
+    ]
+    missing_uniprots_var_nr = len(uniprots_df)
+    missing_uniprots = uniprots_df["UniProt"].unique()
+    missing_uniprots_nr = len(missing_uniprots)
+
+    # If any missing UniProts...
+    if missing_uniprots_nr > 0:
+        logging.info(
+            f"> Missing UniProts: {missing_uniprots_nr} out of {len(set(df.UniProt))}."
+            f" Variants affected: {missing_uniprots_var_nr} out of {len(df)}."
+        )
+
+        # ...Get nr. missing variants per UniProt
+        uniprots_df = (
+            uniprots_df[["COHORT", "SeqID", "UniProt"]]
+            .groupby(["COHORT", "UniProt"])
+            .agg(
+                VARIANTS_NR=('UniProt', 'size'),
+                SEQID=('SeqID', lambda x: ', '.join(x.dropna().astype(str).unique()))
+            )
+            .reset_index()
+        )
+
+        # Format and Store results
+        uniprots_df["COHORT"] = cohort
+        uniprots_df = uniprots_df.rename(columns={
+            "UniProt" : "UNIPROT_MISSING"
+        })
+        missing_uniprot_df.append(uniprots_df)
+
+    else:
+        logging.info("> No Missing UniProt.")
+
+
+
 # ---- GIT COMMIT FUNCTIONS ----
+
 
 def get_last_commit_id():
     # Run git log -1 --format=%H and capture its output
