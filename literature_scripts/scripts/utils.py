@@ -25,10 +25,10 @@ def swap_uniprots(df, uniprot1, uniprot2):
 
 
 # Helper function to check (multi-)UniProt match
-# Example P29460|Q9NPF7 matches P29460 and Q9NPF7
+# Example P0DMV8-P16519 matches P0DMV8 and P16519
 def is_uniprot_match(row, uniprot1, uniprot2):
-    uniprot1set = set(str(row[uniprot1]).split("|") if pd.notna(row[uniprot1]) else [])
-    uniprot2set = set(str(row[uniprot2]).split("|") if pd.notna(row[uniprot2]) else [])
+    uniprot1set = set(str(row[uniprot1]).split(", ") if pd.notna(row[uniprot1]) else [])
+    uniprot2set = set(str(row[uniprot2]).split(", ") if pd.notna(row[uniprot2]) else [])
     return uniprot1set.issubset(uniprot2set) or uniprot2set.issubset(uniprot1set)
 
 
@@ -302,12 +302,33 @@ def uniprot_check(df, cohort, panels_map, uniprot_check_df):
         # Update aligned swapped multi-Prots
         df.loc[mask, "UniProt"] = merged.loc[mask, "UniProt"]
 
-        # Mismatched UniProts
-        merged["UniProt_Match"] = merged.apply(
-            lambda row: is_uniprot_match(row, "UniProt", "UniProt_Literature"),
-            axis=1
+        # Fill empty UniProts
+        mask = merged["UniProt"] == ""
+        merged.loc[mask, "UniProt"] = merged.loc[mask, "UniProt_BELIEVE"]
+        df.loc[mask, "UniProt"] = merged.loc[mask, "UniProt_BELIEVE"]
+
+        # Mismatched UniProts (exclude NaN)
+        merged["UniProt_Match"] = (
+            (merged["UniProt"] == merged["UniProt_BELIEVE"]) |
+            (merged["UniProt"] == "") |
+            (merged["UniProt_BELIEVE"] == "")
         )
+
+        #merged["UniProt_Match"] = merged.apply(
+        #    lambda row: is_uniprot_match(row, "UniProt", "UniProt_Literature"),
+        #    axis=1
+        #)
+        #merged["UniProt"] = merged["UniProt"].fillna("")
+        #merged["UniProt_BELIEVE"] = merged["UniProt_BELIEVE"].fillna("")
+        #merged["UniProt_Match"] = merged["UniProt"] == merged["UniProt_BELIEVE"]
+       
+        
         uniprot_mismatch_df = merged[~merged["UniProt_Match"]].reset_index(drop=True)
+        
+        #print(len(merged))
+        print(merged.loc[~merged["UniProt_Match"], ["UniProt", "UniProt_BELIEVE", "UniProt_Literature"]].head())
+        #print(uniprot_mismatch_df.head())
+        
         uniprot_mismatch_var_nr = len(uniprot_mismatch_df)
         uniprot_mismatch_nr = len(set(uniprot_mismatch_df["UniProt"]))
 

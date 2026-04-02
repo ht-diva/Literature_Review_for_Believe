@@ -160,7 +160,7 @@ for fname in sorted(LITERATURE_INPUT_DIR.glob("pqtl_*.tsv")):
         uniprot_mismatch = merged[merged["trait_protein_ids"] != merged["UNIPROT"]][["SEQID", "trait_protein_ids", "UNIPROT"]].drop_duplicates()
         if not uniprot_mismatch.empty:
             print(
-                f"WARNING {cohort}: {len(uniprot_mismatch)} SEQIDs with UNIPROT mismatches"
+                f"WARNING {cohort}: {len(uniprot_mismatch)} SEQIDs with UNIPROT mismatches. "
                 f"SEQIDs with UNIPROT mismatches: {uniprot_mismatch}"
             )
 

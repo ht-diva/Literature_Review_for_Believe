@@ -11,7 +11,7 @@ pm = PathManager()
 SEARCH_DIR = pm.get_output("literature_harmonized")
 OUTDIR = pm.get_output("literature_gwasstudio_files", exists=False)
 OUTDIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_ROOT = pm.get_output("gwasstudio_output", exists=False)
+OUTPUT_ROOT = pm.get_output("literature_gwasstudio_output", exists=False)
 
 SEARCH_PROJECT = "hdsc"
 SEARCH_STUDY = "believe"
@@ -31,9 +31,9 @@ def main():
         uniprot_all = df["UNIPROT"].notna().all()
 
         if seqid_all:
-            search_meta = "SEQID"
+            SEARCH_META = "SEQID"
         elif uniprot_all:
-            search_meta = "UNIPROT"
+            SEARCH_META = "UNIPROT"
         else:
             raise ValueError(
                 f"{cohort}: Missing metadata — "
@@ -41,7 +41,7 @@ def main():
                 f"UNIPROT non-NA={df['UNIPROT'].notna().sum()}, "
                 f"rows={len(df)}"
             )
-        print(f"\nMetadata field for {cohort}: {search_meta}")
+        print(f"\nMetadata field for {cohort}: {SEARCH_META}")
 
         cmd = [
             "python",
@@ -49,9 +49,9 @@ def main():
             "--search-table", str(tsv),
             "--search-project", SEARCH_PROJECT,
             "--search-study", SEARCH_STUDY,
-            "--search-meta-value", search_meta,
+            "--search-meta-value", SEARCH_META,
             "--search-file-prefix", str(search_file),
-            "--output-root", str(OUTPUT_ROOT),
+            "--output-root", str(OUTPUT_ROOT / SEARCH_META),
         ]
 
         print(f"Running ({cohort}):", " ".join(cmd))

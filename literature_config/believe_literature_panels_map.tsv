@@ -1569,6 +1569,7 @@ seq.14587.16	Growth/differentiation factor 11	O95390	O95390	True
 seq.14593.152	Protein FAM210A	Q96ND0	Q96ND0	True
 seq.14597.5	Semaphorin-6C, cytoplasmic	Q9H3T2	Q9H3T2	True
 seq.14599.18	Stabilin-1	Q9NY15	Q9NY15	True
+seq.14603.51	Uncharacterized protein KIAA0040	Q15053	J3QR46, Q15053	True
 seq.14614.41	Noncompact myelin-associated protein	Q5T1S8	Q5T1S8	True
 seq.14615.46	Keratin-associated protein 2-4	Q9BYR9	Q9BYR9	True
 seq.14616.16	Zinc finger protein 382	Q96SR6	Q96SR6	True
@@ -4526,6 +4527,7 @@ seq.2618.10	Receptor tyrosine-protein kinase erbB-4	Q15303	Q15303	True
 seq.2619.72	Tumor-associated calcium signal transducer 2	P09758	P09758	True
 seq.2620.4	Interleukin-6 receptor subunit beta	P40189	P40189	True
 seq.2622.18	Heme oxygenase 2	P30519	P30519	True
+seq.2625.53	Hsp90alpha	P07900	P07900, P07900|P08238	True
 seq.2630.12	Interleukin-1 Receptor accessory protein	Q9NPH3	Q9NPH3	True
 seq.2631.50	Interleukin-10 receptor subunit beta	Q08334	Q08334	True
 seq.2632.5	Interleukin-12 receptor subunit beta-1	P42701	P42701	True
@@ -4884,6 +4886,7 @@ seq.3388.58	Serine/threonine-protein kinase PAK 5	Q9P286	Q9P286	True
 seq.3389.7	Plasma serine protease inhibitor	P05154	P05154	True
 seq.3390.72	PIK3CA/PIK3R1	P27986|P42336	P27986|P42336	True
 seq.3391.10	Phosphatidylinositol 4,5-bisphosphate 3-kinase catalytic subunit gamma isoform	P48736	P48736	True
+seq.3392.68	Protein kinase B gamma	Q9Y243	P31749|P31751|Q9Y243, Q9Y243	True
 seq.3394.81	Serine/threonine-protein kinase PLK1	P53350	P53350	True
 seq.3396.54	Renin	P00797	P00797	True
 seq.3397.7	Tyrosine-protein phosphatase non-receptor type 11	Q06124	Q06124	True
@@ -4912,6 +4915,7 @@ seq.3435.53	Fibronectin Fragment 4	P02751	P02751	True
 seq.3437.80	Receptor-type tyrosine-protein kinase FLT3	P36888	P36888	True
 seq.3438.10	Follistatin-related protein 3	O95633	O95633	True
 seq.3440.7	Granzyme A	P12544	P12544	True
+seq.3441.64	Glycogen synthase kinase-3 alpha	P49840	P49840, P49840|P49841	True
 seq.3445.53	Interleukin-15 receptor subunit alpha	Q13261	Q13261	True
 seq.3446.7	Interleukin-18 receptor 1	Q13478	Q13478	True
 seq.3447.64	Interleukin-8	P10145	P10145	True
@@ -5112,6 +5116,7 @@ seq.4149.8	Platelet-derived growth factor subunit B	P01127	P01127	True
 seq.4150.75	Plasmin	P00747	P00747	True
 seq.4151.6	Plasminogen	P00747	P00747	True
 seq.4152.58	Plasma kallikrein	P03952	P03952	True
+seq.4153.11	Alpha-1-antichymotrypsin complex	P07288|P01011	P01011, P07288|P01011	True
 seq.4154.57	P-selectin	P16109	P16109	True
 seq.4155.3	Tenascin	P24821	P24821	True
 seq.4156.74	Transforming growth factor beta-2	P61812	P61812	True
@@ -5297,6 +5302,7 @@ seq.4910.21	Phospholipase A2	P04054	P04054	True
 seq.4911.49	Glutathione S-transferase P	P09211	P09211	True
 seq.4912.17	Aspartate aminotransferase, cytoplasmic	P17174	P17174	True
 seq.4913.78	C-C motif chemokine 16	O15467	O15467	True
+seq.4914.10	Human Chorionic Gonadotropin	P0DN87|P0DN86|P01215	P01215|P01233, P0DN87|P0DN86|P01215	True
 seq.4915.64	Hemoglobin	P68871|P69905	P68871|P69905	True
 seq.4916.2	Immunoglobulin D	P01880	P01880	True
 seq.4917.62	Integrin alpha-V: beta-5 complex	P18084|P06756	P18084|P06756	True
@@ -5710,6 +5716,7 @@ seq.5957.30	Somatostatin-28	P61278	P61278	True
 seq.5963.9	Dermokine	Q6E0U4	Q6E0U4	True
 seq.5970.61	Leukocyte cell-derived chemotaxin-2	O14960	O14960	True
 seq.5980.55	BolA-like protein 3	Q53S33	Q53S33	True
+seq.5981.6	ES1 protein homolog, mitochondrial	P0DPI2	P0DPI2, P30042	True
 seq.5982.50	Complement factor H-related protein 1	Q03591	Q03591	True
 seq.5988.49	Tumor necrosis factor ligand superfamily member 14	O43557	O43557	True
 seq.5992.50	T-cell surface glycoprotein CD8 alpha chain	P01732	P01732	True
@@ -5738,6 +5745,7 @@ seq.6103.70	Fc receptor-like protein 5	Q96RD9	Q96RD9	True
 seq.6104.1	Fibroblast growth factor receptor-like 1	Q8N441	Q8N441	True
 seq.6107.3	Chymotrypsin-like elastase family member 1	Q9UNI1	Q9UNI1	True
 seq.6113.31	Endothelin-3	P14138	P14138	True
+seq.6117.4	Internal Use Only: Heat shock 70 kDa protein 1A	P0DMV8	P0DMV8, P16519	True
 seq.6119.14	MAM domain-containing protein 2	Q7Z304	Q7Z304	True
 seq.6123.69	Cellular tumor antigen p53	P04637	P04637	True
 seq.6151.18	Dual specificity mitogen-activated protein kinase kinase 3	P46734	P46734	True
@@ -5779,6 +5787,7 @@ seq.6264.9	Protein CYR61	O00622	O00622	True
 seq.6267.51	Stathmin-4	Q9H169	Q9H169	True
 seq.6273.58	Prolyl 3-hydroxylase 1	Q32P28	Q32P28	True
 seq.6274.15	WSC domain-containing protein 2	Q2TBF2	Q2TBF2	True
+seq.6276.16	Internal Use Only: Heat shock 70 kDa protein 1A	P0DMV8	P09958, P0DMV8	True
 seq.6280.11	Protocadherin-8	O95206	O95206	True
 seq.6281.51	CMP-N-acetylneuraminate-beta-galactosamide-alpha-2,3-sialyltransferase 2	Q16842	Q16842	True
 seq.6283.60	Mast cell-expressed membrane protein 1	Q8IX19	Q8IX19	True
@@ -6101,6 +6110,7 @@ seq.7139.14	SLIT and NTRK-like protein 4	Q8IW52	Q8IW52	True
 seq.7140.1	Chymotrypsin-like elastase family member 2A	P08217	P08217	True
 seq.7141.21	Alpha-1,3-mannosyl-glycoprotein 4-beta-N-acetylglucosaminyltransferase B	Q9UQ53	Q9UQ53	True
 seq.7142.5	Carboxypeptidase N catalytic chain	P15169	P15169	True
+seq.7143.9	N-acetyllactosaminide beta-1,6-N-acetylglucosaminyl-transferase, isoform C	Q8N0V5	Q8N0V5, Q8NFS9	True
 seq.7144.234	Kazal-type serine protease inhibitor domain-containing protein 1	Q96I82	Q96I82	True
 seq.7145.1	Inter-alpha-trypsin inhibitor heavy chain H3	Q06033	Q06033	True
 seq.7146.16	Protein disulfide-isomerase A4	P13667	P13667	True
@@ -6710,6 +6720,7 @@ seq.8901.40	14-3-3 protein gamma	P61981	P61981	True
 seq.8903.1	Cytochrome c oxidase subunit 6C	P09669	P09669	True
 seq.8905.20	Calcium-activated potassium channel subunit beta-3	Q9NPA1	Q9NPA1	True
 seq.8906.60	Leucine-rich repeat and transmembrane domain-containing protein 2	Q8N967	Q8N967	True
+seq.8907.11	UDP-glucuronosyltransferase 2A1	P0DTE4	P0DTE4, Q9Y4X1	True
 seq.8908.14	Potassium voltage-gated channel subfamily E regulatory beta subunit 5:Cytoplasmic domain	Q9UJ90	Q9UJ90	True
 seq.8909.77	Glucosamine-6-phosphate isomerase 1	P46926	P46926	True
 seq.8913.22	Sialic acid-binding Ig-like lectin 11:Cytoplasmic domain, Isoform 2	Q96RL6	Q96RL6	True
@@ -7232,14 +7243,3 @@ seq.9994.217	Potassium-transporting ATPase subunit beta	P51164	P51164	True
 seq.9995.6	Deoxyuridine 5'-triphosphate nucleotidohydrolase, mitochondrial	P33316	P33316	True
 seq.9997.12	UBX domain-containing protein 4:Cytoplasmic domain 1	Q92575	Q92575	True
 seq.9999.1	Interferon regulatory factor 6	O14896	O14896	True
-seq.14603.51	Uncharacterized protein KIAA0040	Q15053	J3QR46, Q15053	False
-seq.2625.53	Hsp90alpha	P07900	P07900, P07900|P08238	False
-seq.3392.68	Protein kinase B gamma	Q9Y243	P31749|P31751|Q9Y243, Q9Y243	False
-seq.3441.64	Glycogen synthase kinase-3 alpha	P49840	P49840, P49840|P49841	False
-seq.4153.11	Alpha-1-antichymotrypsin complex	P07288|P01011	P01011, P07288|P01011	False
-seq.4914.10	Human Chorionic Gonadotropin	P0DN87|P0DN86|P01215	P01215|P01233, P0DN87|P0DN86|P01215	False
-seq.5981.6	ES1 protein homolog, mitochondrial	P0DPI2	P0DPI2, P30042	False
-seq.6117.4	Internal Use Only: Heat shock 70 kDa protein 1A	P0DMV8	P0DMV8, P16519	False
-seq.6276.16	Internal Use Only: Heat shock 70 kDa protein 1A	P0DMV8	P09958, P0DMV8	False
-seq.7143.9	N-acetyllactosaminide beta-1,6-N-acetylglucosaminyl-transferase, isoform C	Q8N0V5	Q8N0V5, Q8NFS9	False
-seq.8907.11	UDP-glucuronosyltransferase 2A1	P0DTE4	P0DTE4, Q9Y4X1	False

@@ -15,7 +15,7 @@ class PathManager:
         literature_files_path = 'literature_files'
         literature_harmonized_path = 'literature_harmonized'
         literature_gwasstudio_files_path = 'literature_gwasstudio_files'
-        gwasstudio_output_path = 'gwasstudio_output'
+        literature_gwasstudio_output_path = 'literature_gwasstudio_output'
 
         self.inputs = {
             'literature_table_raw' : Path(root_project, literature_table_path, 'literature_table_all_somalogic.xlsx'),
@@ -35,7 +35,7 @@ class PathManager:
         self.outputs = {
             'literature_harmonized': Path(root, literature_harmonized_path),
             'literature_gwasstudio_files': Path(root, literature_gwasstudio_files_path),
-            'gwasstudio_output': Path(root, gwasstudio_output_path),
+            'literature_gwasstudio_output': Path(root, literature_gwasstudio_output_path),
         }
 
     def get_inputs(self):
