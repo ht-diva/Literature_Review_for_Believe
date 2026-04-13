@@ -1,5 +1,5 @@
 import pandas as pd
-import re
+import numpy as np
 import click
 import cloup
 import math
@@ -30,12 +30,17 @@ and extract summary statistics with the method extract_regions_leadsnps
 @cloup.option(
     "--search-project",
     required=True,
-    help="The project to search into",
+    help="The project to search into (ref. BELIEVE)",
 )
 @cloup.option(
     "--search-study",
     required=True,
-    help="The study to search into",
+    help="The study to search into (ref. BELIEVE)",
+)
+@cloup.option(
+    "--cohort",
+    required=True,
+    help="The cohort from the literature review used for the search",
 )
 @cloup.option(
     "--search-meta-value",
@@ -60,14 +65,43 @@ and extract summary statistics with the method extract_regions_leadsnps
     help="Optional root directory where gwasstudio_output will be written. "
          "Defaults to the parent directory of the search table.",
 )
+@cloup.option(
+    "--missing-seqids",
+    type=click.Path(path_type=Path, file_okay=True),
+    required=True,
+    help="Path to SEQIDs missing from BELIEVE.",
+)
+@cloup.option(
+    "--missing-uniprots",
+    type=click.Path(path_type=Path, file_okay=True),
+    required=True,
+    help="Path to UNIPROTs missing from BELIEVE.",
+)
+@cloup.option(
+    "--believe-metadata",
+    type=click.Path(path_type=Path, file_okay=True),
+    required=True,
+    help="Path to BELIEVE annotated Protein Panel.",
+)
+@cloup.option(
+    "--logger-path",
+    type=click.Path(path_type=Path, file_okay=True),
+    required=True,
+    help="Path to logger.",
+)
 def build_search_file(
     search_table,
     search_project,
     search_study,
+    cohort,
     search_meta_value,
     search_file_prefix,
     output_fields,
     output_root,
+    missing_seqids,
+    missing_uniprots,
+    believe_metadata,
+    logger_path,
 ):
     """
     Build the files used to search for trait-specific lead SNPs with the method
@@ -86,17 +120,45 @@ def build_search_file(
     if not Path(search_table).is_file():
         raise FileNotFoundError(f"Search table not found: {search_table}")
 
+    if not Path(missing_seqids).is_file():
+        raise FileNotFoundError(f"BELIEVE missing SEQIDs table not found: {missing_seqids}")
+
+    if not Path(missing_uniprots).is_file():
+        raise FileNotFoundError(f"BELIEVE missing UNIPROTs table not found: {missing_uniprots}")
+
+    if not Path(believe_metadata).is_file():
+        raise FileNotFoundError(f"BELIEVE annotated Protein Panel not found: {believe_metadata}")
+    
+
+    # ---- LOAD INPUTS ----
     search_table_df = pd.read_csv(search_table, sep="\t")
+    tot_var = len(search_table_df)
+    missing_var = found_var = flat_prot = 0
+    missing_seqids_df = pd.read_csv(missing_seqids, sep="\t")
+    missing_seqids_df = missing_seqids_df.loc[missing_seqids_df["COHORT"] == cohort]
+    missing_uniprots_df = pd.read_csv(missing_uniprots, sep="\t")
+    missing_uniprots_df = missing_uniprots_df.loc[missing_uniprots_df["COHORT"] == cohort]
+    believe_metadata_df = pd.read_csv(believe_metadata, sep="\t", usecols=["notes_source_id", "trait_protein_ids"])
+    believe_metadata_df = believe_metadata_df.rename(columns={
+        "notes_source_id": "SEQID",
+        "trait_protein_ids": "UNIPROT",
+    })
+
 
     # ---- OUTPUT PATHS ----
     search_path = Path(search_file_prefix)
     search_dir = search_path.parent if search_path.parent != Path("") else Path(".")
     search_dir.mkdir(parents=True, exist_ok=True)
 
+    formatted_name = Path(search_table).stem + "_formatted.csv"
+    formatted_path = search_dir / formatted_name
+
+
     # ---- REQUIRED COLUMNS ----
     required_cols = ["CHR", "POS", "EA", "NEA"]
     if not all(c in search_table_df.columns for c in required_cols):
         raise ValueError("CHR, POS, EA, NEA are missing from the search table.")
+
 
     # ---- VALIDATE METADATA ----
     VALID_META = {
@@ -116,22 +178,11 @@ def build_search_file(
             f"Column '{search_meta_value}' is missing from the search table."
         )
 
+
     # ---- ADD PROJECT & STUDY ----
     search_table_df["project"] = search_project
     search_table_df["study"] = search_study
 
-    # ---- HANDLE MULTI-UNIPROT ----
-    if search_meta_value == "UNIPROT":
-        search_table_df["ORIG_UNIPROT"] = search_table_df["UNIPROT"].astype(str)
-        search_table_df["UNIPROT"] = (
-            search_table_df["UNIPROT"]
-            .astype(str)
-            .str.split(r"[,_|]")
-        )
-        search_table_df = search_table_df.explode("UNIPROT").reset_index(drop=True)
-        search_table_df["IS_FLATPROT"] = (
-            search_table_df["ORIG_UNIPROT"] != search_table_df["UNIPROT"]
-        )
 
     # ---- FORMAT for GWASSTUDIO ----
     search_table_df["CHR"] = (
@@ -157,6 +208,95 @@ def build_search_file(
         .reset_index(drop=True)
     )
 
+    # Back-up original SEQIDs and UNIPROTs
+    search_table_df["ORIG_SEQID"] = search_table_df["SEQID"].astype(str)
+    search_table_df["ORIG_UNIPROT"] = search_table_df["UNIPROT"].astype(str)
+
+
+    # ---- MISSING SEQIDs VIA UNIPROT ----
+    if search_meta_value == "SEQID" and len(missing_seqids_df) > 0:
+
+        # Get missing SEQIDs
+        missing_mask = search_table_df["SEQID"].isin(missing_seqids_df["SEQID_MISSING"])
+        missing_df = search_table_df.loc[missing_mask]
+        search_table_df = search_table_df.loc[~missing_mask]
+        missing_var = len(missing_df)
+        print(f"   > {cohort}: {missing_var} variants from missing SEQIDs.")
+
+        # Search missing SEQIDs in BELIEVE via UNIPROT
+        found_missing_df = missing_df.loc[missing_df["UNIPROT"].isin(believe_metadata_df["UNIPROT"])]
+        found_var = len(found_missing_df)
+        print(f"   > {cohort}: {found_var} variants from missing SEQIDs found via UNIPROT.")
+
+        # Flatten multi-UNIPROTs if present
+        # P0C0L5|P0C0L4 -> P0C0L5 and P0C0L4 in two separate rows
+        mask_multi = found_missing_df["UNIPROT"].str.contains(r"\|", na=False)
+        multi_df = found_missing_df.loc[mask_multi].copy()
+        if mask_multi.sum() > 0:
+            multi_df["UNIPROT"] = multi_df["UNIPROT"].str.split(r"\|")
+            multi_df = multi_df.explode("UNIPROT").reset_index(drop=True)
+            found_missing_df = pd.concat([found_missing_df, multi_df]).reset_index(drop=True)
+            flat_prot = len(multi_df)
+            print(f"   > {cohort}: {flat_prot} flattened multi-UNIPROTs.")
+
+        # If found, update SEQIDs
+        # Note: to one UNIPROT, multiple SEQIDs might be associated
+        if len(found_missing_df) > 0:
+            merged = found_missing_df.merge(
+                believe_metadata_df,
+                on="UNIPROT",
+                how="left",
+                suffixes=("", "_believe")
+            )
+            mask = (merged["SEQID"] != merged["SEQID_believe"]) & (merged["SEQID_believe"].notna())
+            merged["SEQID"] = np.where(mask, merged["SEQID_believe"], merged["SEQID"])
+            merged.drop(columns="SEQID_believe", inplace=True)
+            found_missing_df = merged
+            print(f"   > {cohort}: {len(found_missing_df)} variants from missing SEQIDs found via UNIPROT after adjusting SEQIDs.")
+
+        # Add variants recovered by UNIPROT
+        search_table_df = pd.concat([search_table_df, found_missing_df]).drop_duplicates().reset_index(drop=True)
+
+
+    # ---- HANDLE UNIPROTs ----
+    if search_meta_value == "UNIPROT":
+
+
+        # ---- HANDLE MULTI-UNIPROTs ----
+
+        # Flatten multi-UniProts
+        # P0C0L5|P0C0L4 -> P0C0L5 and P0C0L4 in two separate rows
+        mask_multi = search_table_df["UNIPROT"].str.contains(r"\|", na=False)
+        multi_df = search_table_df.loc[mask_multi].copy()
+        multi_df["UNIPROT"] = multi_df["UNIPROT"].str.split(r"\|")
+        multi_df = multi_df.explode("UNIPROT").reset_index(drop=True)
+        search_table_df = pd.concat([search_table_df, multi_df]).drop_duplicates().reset_index(drop=True)
+        flat_prot = len(multi_df)
+        print(f"   > {cohort}: {flat_prot} flattened multi-UNIPROTs.")
+
+
+        # ---- MISSING UNIPROTs ----
+
+        # Drop missing UNIPROTs
+        missing_mask = search_table_df["UNIPROT"].isin(missing_uniprots_df["UNIPROT_MISSING"])
+        search_table_df = search_table_df.loc[~missing_mask]
+        missing_var = missing_mask.sum()
+        print(f"   > {cohort}: {missing_var} variants from missing UNIPROTs.")
+
+
+    # Flags for (un)matching UNIPROTs and SEQIDs
+    # SEQID_MATCH == False -> missing SEQID found via UNIPROT
+    # UNIPROT_MATCH == False -> flattened multi-UNIPROT
+    search_table_df["SEQID_MATCH"] = (
+        search_table_df["ORIG_SEQID"] == search_table_df["SEQID"]
+    ) | (
+        search_table_df["SEQID"].isna()
+    )
+    search_table_df["UNIPROT_MATCH"] = (
+        search_table_df["ORIG_UNIPROT"] == search_table_df["UNIPROT"]
+    )
+
+
     # ---- BUILD SOURCEID_SNP ----
     search_table_df["SOURCE_ID"] = search_table_df[search_meta_value].astype(str)
     search_table_df["SOURCEID_SNP"] = (
@@ -167,10 +307,10 @@ def build_search_file(
         + ":" + search_table_df["NEA"].astype(str)
     )
 
+
     # ---- WRITE FORMATTED TABLE ----
-    formatted_name = Path(search_table).stem + "_formatted.csv"
-    formatted_path = search_dir / formatted_name
     search_table_df.to_csv(formatted_path, index=False)
+
 
     # ---- BUILD YAML ----
     yaml_data = CommentedMap()
@@ -194,6 +334,7 @@ def build_search_file(
 
     with open(search_file_prefix, "w") as f:
         yaml.dump(yaml_data, f)
+
 
     # ---- BUILD SLURM SCRIPT ----
     cohort_name = Path(search_table).stem.replace(".gwaslab", "")
@@ -268,6 +409,12 @@ def build_search_file(
         f.write(slurm_script)
 
     run_script.chmod(0o755)
+
+
+    # ---- LOGGER ----
+    with open(logger_path, 'a') as f:
+        f.write(f"{cohort}\t{search_meta_value}\t{tot_var}\t{missing_var}\t{found_var}\t{flat_prot}\n")
+
 
 
 if __name__ == "__main__":

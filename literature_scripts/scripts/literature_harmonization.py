@@ -112,6 +112,19 @@ for fname in sorted(LITERATURE_INPUT_DIR.glob("pqtl_*.tsv")):
     loss = n_raw - n_harm
 
 
+    # ---- REMOVE D-I ALLELES ----
+    di_mask = (df_harm["EA"].isin(["D", "I"])) | (df_harm["NEA"].isin(["D", "I"]))
+    print(f"D-I allele removal: {di_mask.sum()}")
+    df_harm = df_harm.loc[~di_mask]
+    df_harm.reset_index(drop=True, inplace=True)
+
+
+    # ---- COUNT VARIANT LOSS FROM D-I REMOVAL ----
+    n_harm_di = n_harm
+    n_harm = len(df_harm)
+    loss_di = n_harm_di - n_harm
+
+
     # ---- BACK-UP SE (pqtl_QMDiab) ----
     if cohort == "pqtl_QMDiab":
         df_harm = df_harm.merge(
@@ -186,6 +199,7 @@ for fname in sorted(LITERATURE_INPUT_DIR.glob("pqtl_*.tsv")):
         n_raw,
         n_harm,
         loss,
+        loss_di,
         loss_liftover,
     ])
 
@@ -207,6 +221,7 @@ summary_df = pd.DataFrame(
         "VARIANT_NR_RAW",
         "VARIANT_NR_HARM",
         "VARIANT_LOSS_STATS",
+        "VARIANT_LOSS_DI",
         "VARIANT_LOSS_LIFTOVER"
     ]
 )

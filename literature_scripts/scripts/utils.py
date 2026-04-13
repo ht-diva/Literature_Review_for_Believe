@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import subprocess
 import logging
+import re
 
 from scipy.stats import norm
 
@@ -232,8 +233,19 @@ def sanity_check(df, cohort, panels_map, uniprot_check_df, missing_seqid_df, mis
         logging.info(f"Dropped {n_dropped} rows with EFFECT_ALLELE == 'S'")
 
 
+    # ---- CIS-TRANS FORMATTING ----
+    df["cis_trans"] = df["cis_trans"].str.strip().str.lower()
+
+
     # ---- SEQID CHECK ----
     if not df["SeqID"].dropna().empty:
+
+        # Eliminate null SeqIDs
+        seqna_mask = df["SeqID"] == "seq.NA"
+        n_seqna = seqna_mask.sum()
+        if n_seqna > 0:
+            df = df.loc[~seqna_mask].reset_index(drop=True)
+            logging.info(f"> Eliminated {n_seqna} seq.NA entries")
 
         # Detect malformed SeqIDs
         malformed_mask = df["SeqID"].str.match(r"^seq\.\d+\.\d+\.\d+$", na=False)
@@ -250,7 +262,7 @@ def sanity_check(df, cohort, panels_map, uniprot_check_df, missing_seqid_df, mis
                 + "_" + df.loc[malformed_mask, "PMID"].astype(str)
                 + "_" + df.loc[malformed_mask, "COHORT"]
             )
-            logging.info(f"Updated {n_fixed} malformed SEQIDs and pqtlIDs")
+            logging.info(f"> Updated {n_fixed} malformed SEQIDs and pqtlIDs")
 
 
     # ---- UNIPROT CHECK / FORMATTING ----
@@ -313,22 +325,7 @@ def uniprot_check(df, cohort, panels_map, uniprot_check_df):
             (merged["UniProt"] == "") |
             (merged["UniProt_BELIEVE"] == "")
         )
-
-        #merged["UniProt_Match"] = merged.apply(
-        #    lambda row: is_uniprot_match(row, "UniProt", "UniProt_Literature"),
-        #    axis=1
-        #)
-        #merged["UniProt"] = merged["UniProt"].fillna("")
-        #merged["UniProt_BELIEVE"] = merged["UniProt_BELIEVE"].fillna("")
-        #merged["UniProt_Match"] = merged["UniProt"] == merged["UniProt_BELIEVE"]
-       
-        
         uniprot_mismatch_df = merged[~merged["UniProt_Match"]].reset_index(drop=True)
-        
-        #print(len(merged))
-        print(merged.loc[~merged["UniProt_Match"], ["UniProt", "UniProt_BELIEVE", "UniProt_Literature"]].head())
-        #print(uniprot_mismatch_df.head())
-        
         uniprot_mismatch_var_nr = len(uniprot_mismatch_df)
         uniprot_mismatch_nr = len(set(uniprot_mismatch_df["UniProt"]))
 
@@ -477,7 +474,7 @@ def save_last_commit_id_to_file(file_name):
     # Get the last commit ID
     last_commit_id = get_last_commit_id()
     msg = (f"This folder contains data produced by this commit id {last_commit_id} of the code.\n"
-           f"Check Check https://github.com/ht-diva/Literature_Review_for_Believe/main")
+           f"Check out: https://github.com/ht-diva/Literature_Review_for_Believe/main")
 
     # Save it to a file
     with open(file_name, 'w') as f:
