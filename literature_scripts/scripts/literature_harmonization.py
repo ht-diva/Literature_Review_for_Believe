@@ -193,6 +193,16 @@ for fname in sorted(LITERATURE_INPUT_DIR.glob("pqtl_*.tsv")):
         )
 
 
+    # ---- COUNT MULTI-ALLELIC SNPS/LOCI ----
+    multiallelic_snps_mask = df_harm.groupby(["CHR", "POS"])["SNPID"].transform("nunique").gt(1)
+    nr_multiallelic_snps = multiallelic_snps_mask.sum()
+    nr_multiallelic_loci = df_harm.groupby(["CHR", "POS"])["SNPID"].nunique().gt(1).sum()
+    if nr_multiallelic_snps > 0:
+        multiallelic_snps_df = df_harm[multiallelic_snps_mask][["PQTLID", "SEQID", "UNIPROT", "SNPID"]]
+        multiallelic_snps_df = multiallelic_snps_df.drop_duplicates().reset_index(drop=True)
+        nr_multiallelic_snps = len(multiallelic_snps_df)
+
+
     # ---- SUMMARY ----
     summary_rows.append([
         cohort,
@@ -201,6 +211,8 @@ for fname in sorted(LITERATURE_INPUT_DIR.glob("pqtl_*.tsv")):
         loss,
         loss_di,
         loss_liftover,
+        nr_multiallelic_snps,
+        nr_multiallelic_loci
     ])
 
 
@@ -222,7 +234,9 @@ summary_df = pd.DataFrame(
         "VARIANT_NR_HARM",
         "VARIANT_LOSS_STATS",
         "VARIANT_LOSS_DI",
-        "VARIANT_LOSS_LIFTOVER"
+        "VARIANT_LOSS_LIFTOVER",
+        "MULTI-ALLELIC_SNPS",
+        "MULTI-ALLELIC_LOCI"
     ]
 )
 summary_df.to_csv(OUTDIR / "harmonization_summary.tsv", sep="\t", index=False)
