@@ -16,10 +16,11 @@ make clean_table
 
 Cleaning includes: 
 
-1. preliminary sanity checks for SeqIDs and UniProt IDs
-2. change mismatched UniProts to UniProt format in BELIEVE Metadata
-3. report literature's SEQIDs and UniProts missing in BELIEVE Metadata
-4. addinng additional studies: 
+1. removal of variants with bad alleles ("!" or ".")
+2. preliminary sanity checks for SeqIDs and UniProt IDs
+3. change mismatched UniProts to UniProt format in BELIEVE Metadata
+4. report literature's SEQIDs and UniProts missing in BELIEVE Metadata
+5. addinng additional studies: 
     - `pqtl_interval_chris_meta` 
     - `pqtl_sun_ukb_csa`
     - `pqtl_decode_2023` (fore more details on table generation, see [here](https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_files/pqtl_decode_2023))

@@ -214,8 +214,8 @@ def sanity_check(df, cohort, panels_map, uniprot_check_df, missing_seqid_df, mis
     # ---- ALLELE CHECK ----
     n_alleles_orig = len(df)
     mask_bad_alleles = (
-        df["EFFECT_ALLELE"].astype(str).str.contains("!", regex=False) |
-        df["OTHER_ALLELE"].astype(str).str.contains("!", regex=False)
+        df["EFFECT_ALLELE"].astype(str).str.contains("!|\\.", regex=True) |
+        df["OTHER_ALLELE"].astype(str).str.contains("!|\\.", regex=True)
     )
     n_removed = mask_bad_alleles.sum()
     df = df.loc[~mask_bad_alleles].copy()
@@ -223,7 +223,7 @@ def sanity_check(df, cohort, panels_map, uniprot_check_df, missing_seqid_df, mis
     if n_removed > 0:
         logging.warning(
             f"{cohort}: Removed {n_removed} rows (out of {n_alleles_orig}) "
-            "with '!' in EA or NEA"
+            "with '!' or '.' in EA or NEA"
         )
 
     n_dropped = (df["EFFECT_ALLELE"] == "S").sum()

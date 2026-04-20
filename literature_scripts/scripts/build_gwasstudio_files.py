@@ -250,6 +250,7 @@ def build_search_file(
             )
             mask = (merged["SEQID"] != merged["SEQID_believe"]) & (merged["SEQID_believe"].notna())
             merged["SEQID"] = np.where(mask, merged["SEQID_believe"], merged["SEQID"])
+            merged = merged[merged["SEQID_believe"].notna()]
             merged.drop(columns="SEQID_believe", inplace=True)
             found_missing_df = merged
             print(f"   > {cohort}: {len(found_missing_df)} variants from missing SEQIDs found via UNIPROT after adjusting SEQIDs.")
@@ -389,7 +390,7 @@ def build_search_file(
         #SBATCH --output=logs/%j_gwasstudio_leadsnps_{cohort_name}.log
         #SBATCH --partition=cpuq
         #SBATCH --cpus-per-task=1
-        #SBATCH --mem=2G
+        #SBATCH --mem=4G
         #SBATCH --time={time_str}
 
         source /exchange/healthds/singularity_functions
@@ -397,7 +398,7 @@ def build_search_file(
         gwasstudio --dask-deployment slurm \\
             --workers {workers} \\
             --cores-per-worker 1 \\
-            --memory-per-worker 2GiB \\
+            --memory-per-worker 4GiB \\
             export \\
             --search-file {search_file_prefix} \\
             --get-regions-leadsnps {formatted_path} \\

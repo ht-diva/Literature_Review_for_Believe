@@ -1,5 +1,4 @@
 from pathlib import Path
-import subprocess
 import pandas as pd
 
 from paths import PathManager
@@ -8,7 +7,7 @@ from paths import PathManager
 # ---- PATHS ----
 pm = PathManager()
 INPUTS_DIR = pm.get_output("literature_gwasstudio_files", exists=False)
-OUTPUT_DIR = Path(INPUTS_DIR.parent / "gwasstudio_output")
+OUTPUT_DIR = pm.get_outputs()["literature_gwasstudio_output"]
 
 
 for cohort_dir in OUTPUT_DIR.iterdir():
@@ -58,7 +57,7 @@ for cohort_dir in OUTPUT_DIR.iterdir():
             merged["meta_link_id"] != merged["SOURCEID_SNP"].str.split(":", n=1).str[0]
         ]
         if not bad_link.empty:
-            bad_values = bad_link[["meta_link_id","meta_trait_protein_ids","SOURCEID_SNP","UNIPROT","ORIG_UNIPROT","IS_FLATPROT"]]
+            bad_values = bad_link[["meta_link_id","meta_trait_protein_ids","SOURCEID_SNP","UNIPROT","ORIG_UNIPROT","UNIPROT_MATCH"]]
             raise ValueError(
                 f"{cohort_name}: meta_link_id mismatch for {len(bad_link)} rows\n"
                 f"bad_values"
@@ -67,6 +66,7 @@ for cohort_dir in OUTPUT_DIR.iterdir():
     # Check for mismatches in UniProt
     # Normalize UNIPROTs (order- and space-insensitive)
     # Note: "P0C0L4 | P0C0L5" is the same UniProt as "P0C0L5|P0C0L4"
+    # Extra-check after formatting in clean_table
     u1 = (merged["UNIPROT"].fillna("").str.replace(" ", "", regex=False).str.split("|").apply(lambda x: set(filter(None, x))))
     u2 = (merged["meta_trait_protein_ids"].fillna("").str.replace(" ", "", regex=False).str.split("|").apply(lambda x: set(filter(None, x))))
     exact_match = u1 == u2
@@ -86,8 +86,12 @@ for cohort_dir in OUTPUT_DIR.iterdir():
             f"WARNING [{cohort_name}]: UNIPROT differs but is contained in "
             f"meta_trait_protein_ids for {len(warn_uniprot)} rows"
         )
-    merged["TILEDB_UNIPROT"] = merged["meta_trait_protein_ids"]
-    merged["UNIPROT_MATCH"] = merged["meta_trait_protein_ids"] == merged["UNIPROT"]
+
+
+    # ---- ADD FLAGS ----
+
+    # Check whether exact match has the exact same alleles
+    merged["EXACT_ALLELES"] = merged["SNPID"] == merged["SNPID_EXACT"]
 
 
     # ---- FORMATTING & SAVE ----
