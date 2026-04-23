@@ -9,6 +9,10 @@ all:
 dependencies:
 	conda env update --file environment.yml
 
+add_studies:
+	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
+	python scripts/add_studies.py
+
 clean_table:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
 	python scripts/clean_literature_table.py
@@ -25,4 +29,4 @@ combine_output:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
 	python scripts/combine_output.py
 
-.PHONY: all dependencies harmonization gwasstudio_files
+.PHONY: all dependencies add_studies clean_table harmonization gwasstudio_files

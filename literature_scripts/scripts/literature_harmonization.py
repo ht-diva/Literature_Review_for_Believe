@@ -12,7 +12,7 @@ from utils import save_last_commit_id_to_file
 
 # ---- PATHS & CONFIG ----
 pm = PathManager()
-LITERATURE_INPUT = pm.get_inputs()["literature_table"]
+LITERATURE_INPUT = pm.get_inputs()["literature_table_cleaned"]
 LITERATURE_INPUT_DIR = LITERATURE_INPUT.parent
 CONFIGS = pm.get_config()
 CONFIG_HARMONIZE = CONFIGS["config_harmonize"]

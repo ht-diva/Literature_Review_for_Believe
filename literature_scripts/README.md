@@ -1,12 +1,28 @@
 # BELIEVE Harmonization & Lead SNPs Export
 
+## 0. Install dependencies
+
 To install all required dependencies (first time), run the following command:
 
 ```
 make dependencies
 ```
 
-## 0. Clean Literature Table
+## 1. Add Studies
+
+To add the studies:
+
+* `pqtl_interval_chris_meta` 
+* `pqtl_sun_ukb_csa`
+* `pqtl_decode_2023` (fore more details on table generation, see [here](https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_files/pqtl_decode_2023))
+
+run the following command:
+
+```
+make add_studies
+```
+
+## 2. Clean Literature Table
 
 Before harmonization, the original literature table `literature_table_all_somalogic.xlsx` is cleaned to `literature_table_all_somalogic_cleaned.xlsx` via:
 
@@ -20,12 +36,8 @@ Cleaning includes:
 2. preliminary sanity checks for SeqIDs and UniProt IDs
 3. change mismatched UniProts to UniProt format in BELIEVE Metadata
 4. report literature's SEQIDs and UniProts missing in BELIEVE Metadata
-5. addinng additional studies: 
-    - `pqtl_interval_chris_meta` 
-    - `pqtl_sun_ukb_csa`
-    - `pqtl_decode_2023` (fore more details on table generation, see [here](https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_files/pqtl_decode_2023))
 
-## 1. Literature Table Harmonization
+## 3. Literature Table Harmonization
 
 To harmonize the literature table, run the following command:
 
@@ -41,7 +53,7 @@ make harmonization
 
 * Along with the table files, the command creates a release file **release.txt** with the code commit ID that generated them.
 
-## 2. GWASStudio Files Generation
+## 4. GWASStudio Files Generation
 
 To generate all required GWASStudio files, run the following command:
 
@@ -57,7 +69,7 @@ The generated `literature_gwasstudio_files` folder will contain all required GWA
 * cohort-specific search tables formatted as GWASStudio inputs (`*..gwaslab_formatted.csv`)
 * cohort-specific sbatch scripts to execute GWASStudio exports (`run_gwasstudio_*.sbatch`)
 
-## 3. GWASStudio Lead SNPs Export
+## 5. GWASStudio Lead SNPs Export
 
 To execute the GWASStudio export of cohort-specific lead SNPs, run the following command:
 
