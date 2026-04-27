@@ -1,5 +1,6 @@
 # Folders/files with sensitive information
 literature_table/
+literature_files/interval_chris_meta_st3.csv
 literature_files/pqtl_decode_2023/decode_2023_leadsnp_sumstats
 literature_files/pqtl_decode_2023/decode_2023_alleles_mismatch.csv
 literature_files/pqtl_decode_2023/decode_2023_filenames_list.txt
