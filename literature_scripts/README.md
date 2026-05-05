@@ -22,7 +22,15 @@ run the following command:
 make add_studies
 ```
 
-## 2. Clean Literature Table
+## 2. Literature Liftover
+
+To perform a liftover (pos37 to pos38), run the following command:
+
+```
+make liftover
+```
+
+## 3. Clean Literature Table
 
 Before harmonization, the original literature table `literature_table_all_somalogic.xlsx` is cleaned to `literature_table_all_somalogic_cleaned.xlsx` via:
 
@@ -37,7 +45,7 @@ Cleaning includes:
 3. change mismatched UniProts to UniProt format in BELIEVE Metadata
 4. report literature's SEQIDs and UniProts missing in BELIEVE Metadata
 
-## 3. Literature Table Harmonization
+## 4. Literature Table Harmonization
 
 To harmonize the literature table, run the following command:
 
@@ -53,7 +61,7 @@ make harmonization
 
 * Along with the table files, the command creates a release file **release.txt** with the code commit ID that generated them.
 
-## 4. GWASStudio Files Generation
+## 5. GWASStudio Files Generation
 
 To generate all required GWASStudio files, run the following command:
 
@@ -69,7 +77,7 @@ The generated `literature_gwasstudio_files` folder will contain all required GWA
 * cohort-specific search tables formatted as GWASStudio inputs (`*..gwaslab_formatted.csv`)
 * cohort-specific sbatch scripts to execute GWASStudio exports (`run_gwasstudio_*.sbatch`)
 
-## 5. GWASStudio Lead SNPs Export
+## 6. GWASStudio Lead SNPs Export
 
 To execute the GWASStudio export of cohort-specific lead SNPs, run the following command:
 
@@ -84,7 +92,7 @@ The GWASStudio command `--get-regions-leadsnps` creates a window of given width 
 * the lead SNP, i.e. the SNPID with the most significant P-value
 * the exact SNP, i.e. the exact CHR:POS:EA:NEA of the input
 
-## 4. GWASStudio Output Format
+## 7. GWASStudio Output Format
 
 To combine and format the final GWASStudio output, run the following commmand:
 

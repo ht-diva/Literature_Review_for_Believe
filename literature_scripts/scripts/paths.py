@@ -13,6 +13,7 @@ class PathManager:
         literature_table_path = 'literature_table'
         literature_config_path = 'literature_config'
         literature_files_path = 'literature_files'
+        literature_liftover_path = 'literature_liftover'
         literature_harmonized_path = 'literature_harmonized'
         literature_gwasstudio_files_path = 'literature_gwasstudio_files'
         literature_gwasstudio_output_path = 'literature_gwasstudio_output'
@@ -20,6 +21,7 @@ class PathManager:
         self.inputs = {
             'literature_table_raw' : Path(root_project, literature_table_path, 'literature_table_all_somalogic.xlsx'),
             'literature_table' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_allstudies.xlsx'),
+            'literature_table_liftover' : Path(root_project, literature_liftover_path, 'literature_table_all_somalogic_liftover.xlsx'),
             'literature_table_cleaned' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_cleaned.xlsx'),
         }
         self.config = {

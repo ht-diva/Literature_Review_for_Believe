@@ -480,3 +480,44 @@ def save_last_commit_id_to_file(file_name):
     with open(file_name, 'w') as f:
         f.write(msg)
 
+
+
+# ---- CONVERT TO VCF FUNCTION ----
+
+def write_vcf(df, output_filename):
+    with open(output_filename, "w") as vcf_file:
+
+        # Ensure POS is valid integer
+        df["pos37"] = pd.to_numeric(df["pos37"], errors="coerce")
+        df = df.dropna(subset=["pos37"])
+        df["pos37"] = df["pos37"].astype(int)
+
+        # Write the VCF header
+        vcf_file.write("##fileformat=VCFv4.2\n")
+        vcf_file.write("##source=PythonScript\n")
+        vcf_file.write("##reference=GRCh37\n")
+        vcf_file.write('##INFO=<ID=BETA,Number=1,Type=Float,Description=Effect Size Estimate>\n')
+        vcf_file.write('##INFO=<ID=SE,Number=1,Type=Float,Description=Standard Error>\n')
+        vcf_file.write('##INFO=<ID=N,Number=1,Type=Integer,Description=Sample Size>\n')
+        vcf_file.write('##INFO=<ID=MLOG10P,Number=1,Type=Float,Description=Negative Log10 P-value>\n')
+        vcf_file.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
+
+        # Iterate through rows
+        for _, row in df.iterrows():
+            chrom = row["chr"]
+            pos = row["pos37"]
+            vid = row["rsID"]
+            ref = row["EFFECT_ALLELE"]
+            alt = row["OTHER_ALLELE"]
+            qual = "."
+            filt = "."
+
+            info = (
+                f"BETA={row['BETA']};"
+                f"SE={row['SE']};"
+                f"N={row['SAMPLE_SIZE']};"
+                f"MLOG10P={row['minuslog10pval']}"
+            )
+
+            line = f"{chrom}\t{pos}\t{vid}\t{ref}\t{alt}\t{qual}\t{filt}\t{info}\n"
+            vcf_file.write(line)

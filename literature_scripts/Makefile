@@ -1,7 +1,7 @@
 CONDA_ENV_DIR := $(shell dirname $(CONDA_EXE))
 CONDA_ENV_NAME := literature_harmonization
 
-TARGETS := dependencies harmonization gwasstudio_files
+TARGETS := dependencies add_studies liftover clean_table harmonization gwasstudio_files
 
 all:
 	@echo "Available targets: $(TARGETS)"
@@ -12,6 +12,10 @@ dependencies:
 add_studies:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
 	python scripts/add_studies.py
+
+liftover:
+	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
+	python scripts/literature_liftover.py
 
 clean_table:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
@@ -29,4 +33,4 @@ combine_output:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
 	python scripts/combine_output.py
 
-.PHONY: all dependencies add_studies clean_table harmonization gwasstudio_files
+.PHONY: all dependencies add_studies liftover clean_table harmonization gwasstudio_files
