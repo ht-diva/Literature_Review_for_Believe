@@ -10,10 +10,10 @@ dependencies:
 	conda env update --file environment.yml
 
 dependencies-force:
-        conda env update --file environment.yml --prune
-        @echo "Forcing pip reinstall of gwaspipe..."
-        pip install --force-reinstall --no-cache-dir \
-        git+https://github.com/ht-diva/gwaspipe.git@main
+	conda env update --file environment.yml --prune
+	@echo "Forcing pip reinstall of gwaspipe..."
+	pip install --force-reinstall --no-cache-dir \
+	git+https://github.com/ht-diva/gwaspipe.git@main
 
 add_studies:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
