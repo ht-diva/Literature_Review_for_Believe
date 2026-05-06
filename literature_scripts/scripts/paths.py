@@ -22,6 +22,7 @@ class PathManager:
             'literature_table' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_allstudies.xlsx'),
             'literature_table_liftover' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_liftover.xlsx'),
             'literature_table_cleaned' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_cleaned.xlsx'),
+            'literature_table_harmonized' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_harmonized.xlsx'),
         }
         self.config = {
             'config_harmonize' : Path(root_project, literature_config_path, 'config_harmonize.yml'),

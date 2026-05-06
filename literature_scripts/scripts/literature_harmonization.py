@@ -21,6 +21,7 @@ FORMAT = "literature_rev"
 SEP = "\t"
 OUTDIR = pm.get_output("literature_harmonized", exists=False)
 OUTDIR.mkdir(parents=True, exist_ok=True)
+OUTPUT = pm.get_inputs()["literature_table_harmonized"]
 
 
 # ---- HELPER FUNCTIONS ----
@@ -42,18 +43,6 @@ def build_tmp_config(base_config: Path, tmp_name: str) -> Path:
     return tmp_config
 
 
-# ---- EXTRACT LITERATURE TABLES ----
-skip_sheets = {"credits", "variant", "protein", "olink", "cohort", "study"}
-xls = pd.ExcelFile(LITERATURE_INPUT)
-for sheet in xls.sheet_names:
-    if sheet.lower() in skip_sheets:
-        continue
-    print(f"Extracting: {sheet}")
-    df = pd.read_excel(xls, sheet_name=sheet)
-    single_tsv = LITERATURE_INPUT_DIR / f"{sheet}.tsv"
-    df.to_csv(single_tsv, sep="\t", index=False)
-
-
 # ---- FORMATBOOKS ----
 tmp_harmonize_config = build_tmp_config(
     CONFIG_HARMONIZE,
@@ -62,163 +51,184 @@ tmp_harmonize_config = build_tmp_config(
 
 
 # ---- HARMONIZE LITERATURE TABLES ----
+skip_sheets = {"credits", "variant", "protein", "olink", "cohort", "study"}
+xls = pd.ExcelFile(LITERATURE_INPUT)
 summary_rows = []
-for fname in sorted(LITERATURE_INPUT_DIR.glob("pqtl_*.tsv")):
-    cohort = fname.stem
-    print(f"\n=== Processing {cohort} ===")
+
+with pd.ExcelWriter(OUTPUT) as writer:
+    for sheet in xls.sheet_names:
+        df = pd.read_excel(xls, sheet_name=sheet)
+        if sheet.lower() in skip_sheets:
+            df.to_excel(writer, sheet_name=sheet, index=False)
+            continue
 
 
-    # ---- BACK-UP SE (pqtl_QMDiab) ----
-    if cohort == "pqtl_QMDiab":
+        # ---- EXTRACT LITERATURE TABLES ----
+        cohort = sheet
+        print(f"\n=== Processing {[str(cohort)]} ===")
+        print(f"Extracting: {cohort}")
+
+        fname = LITERATURE_INPUT_DIR / f"{sheet}.tsv"
+        df.to_csv(fname, sep="\t", index=False)
+
+
+        # ---- BACK-UP SE (pqtl_QMDiab) ----
+        if cohort == "pqtl_QMDiab":
+            df_raw = pd.read_csv(fname, sep="\t")
+            df_raw["SE_orig"] = df_raw["SE"]
+            df_raw.loc[df_raw["SE"] < -1e-07, "SE"] = -0.99e-07 #-1e-07 < SE < inf
+            df_raw.to_csv(fname, sep="\t", index=False)
+
+
+        # ---- BACK-UP MLOG10P (pqtl_interval_chris_meta) ----
+        if cohort == "pqtl_interval_chris_meta":
+            df_raw = pd.read_csv(fname, sep="\t")
+            df_raw["MLOG10P_orig"] = df_raw["minuslog10pval"]
+            df_raw.loc[df_raw["minuslog10pval"] > 999.0, "minuslog10pval"] = 999.0 #-1e-07 < MLOG10P < 9999.0000001
+            df_raw.to_csv(fname, sep="\t", index=False)
+
+
+        # ---- RUN GWASPIPE HARMONIZATION ----
+        cmd = [
+            "gwaspipe",
+            "-f", FORMAT,
+            "-s", SEP,
+            "-c", str(tmp_harmonize_config),
+            "-i", str(fname),
+            "-o", str(OUTDIR)
+        ]
+        print("Running Harmonization:", " ".join(cmd))
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        gz_out = OUTDIR / f"{cohort}.gwaslab.tsv.gz"
+        tsv_out = OUTDIR / f"{cohort}.gwaslab.tsv"
+        print("Decompressing into:", tsv_out)
+        decompress_gz(gz_out, tsv_out)
+        if gz_out.exists():
+            gz_out.unlink()
         df_raw = pd.read_csv(fname, sep="\t")
-        df_raw["SE_orig"] = df_raw["SE"]
-        df_raw.loc[df_raw["SE"] < -1e-07, "SE"] = -0.99e-07 #-1e-07 < SE < inf
-        df_raw.to_csv(fname, sep="\t", index=False)
+        df_harm = pd.read_csv(tsv_out, sep="\t")
 
 
-    # ---- BACK-UP MLOG10P (pqtl_interval_chris_meta) ----
-    if cohort == "pqtl_interval_chris_meta":
-        df_raw = pd.read_csv(fname, sep="\t")
-        df_raw["MLOG10P_orig"] = df_raw["minuslog10pval"]
-        df_raw.loc[df_raw["minuslog10pval"] > 999.0, "minuslog10pval"] = 999.0 #-1e-07 < MLOG10P < 9999.0000001
-        df_raw.to_csv(fname, sep="\t", index=False)
+        # ---- COUNT VARIANT LOSS FROM BAD STATISTICS ----
+        n_raw = len(df_raw)
+        n_harm = len(df_harm)
+        loss = n_raw - n_harm
 
 
-    # ---- RUN GWASPIPE HARMONIZATION ----
-    cmd = [
-        "gwaspipe",
-        "-f", FORMAT,
-        "-s", SEP,
-        "-c", str(tmp_harmonize_config),
-        "-i", str(fname),
-        "-o", str(OUTDIR)
-    ]
-    print("Running Harmonization:", " ".join(cmd))
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    gz_out = OUTDIR / f"{cohort}.gwaslab.tsv.gz"
-    tsv_out = OUTDIR / f"{cohort}.gwaslab.tsv"
-    print("Decompressing into:", tsv_out)
-    decompress_gz(gz_out, tsv_out)
-    if gz_out.exists():
-        gz_out.unlink()
-    df_raw = pd.read_csv(fname, sep="\t")
-    df_harm = pd.read_csv(tsv_out, sep="\t")
+        # ---- REMOVE D-I ALLELES ----
+        di_mask = (df_harm["EA"].isin(["D", "I"])) | (df_harm["NEA"].isin(["D", "I"]))
+        print(f"D-I allele removal: {di_mask.sum()}")
+        df_harm = df_harm.loc[~di_mask]
+        df_harm.reset_index(drop=True, inplace=True)
 
 
-    # ---- COUNT VARIANT LOSS FROM BAD STATISTICS ----
-    n_raw = len(df_raw)
-    n_harm = len(df_harm)
-    loss = n_raw - n_harm
+        # ---- COUNT VARIANT LOSS FROM D-I REMOVAL ----
+        n_harm_di = n_harm
+        n_harm = len(df_harm)
+        loss_di = n_harm_di - n_harm
 
 
-    # ---- REMOVE D-I ALLELES ----
-    di_mask = (df_harm["EA"].isin(["D", "I"])) | (df_harm["NEA"].isin(["D", "I"]))
-    print(f"D-I allele removal: {di_mask.sum()}")
-    df_harm = df_harm.loc[~di_mask]
-    df_harm.reset_index(drop=True, inplace=True)
+        # ---- BACK-UP SE (pqtl_QMDiab) ----
+        if cohort == "pqtl_QMDiab":
+            df_harm = df_harm.merge(
+                df_raw[["pqtlID", "chr", "pos38", "SE_orig"]],
+                left_on=["PQTLID", "CHR", "POS"],
+                right_on=["pqtlID", "chr", "pos38"],
+                how="left",
+            )
+            df_harm["SE"] = df_harm["SE_orig"]
+            df_harm.drop(columns=["pqtlID", "chr", "pos38", "SE_orig"], inplace=True)
 
 
-    # ---- COUNT VARIANT LOSS FROM D-I REMOVAL ----
-    n_harm_di = n_harm
-    n_harm = len(df_harm)
-    loss_di = n_harm_di - n_harm
+        # ---- BACK-UP MLOG10P (pqtl_interval_chris_meta) ----
+        if cohort == "pqtl_interval_chris_meta":
+            df_harm = df_harm.merge(
+                df_raw[["pqtlID", "chr", "pos38", "MLOG10P_orig"]],
+                left_on=["PQTLID", "CHR", "POS"],
+                right_on=["pqtlID", "chr", "pos38"],
+                how="left",
+            )
+            df_harm["MLOG10P"] = df_harm["MLOG10P_orig"]
+            df_harm.drop(columns=["pqtlID", "chr", "pos38", "MLOG10P_orig"], inplace=True)
 
 
-    # ---- BACK-UP SE (pqtl_QMDiab) ----
-    if cohort == "pqtl_QMDiab":
-        df_harm = df_harm.merge(
-            df_raw[["pqtlID", "chr", "pos38", "SE_orig"]],
-            left_on=["PQTLID", "CHR", "POS"],
-            right_on=["pqtlID", "chr", "pos38"],
-            how="left",
-        )
-        df_harm["SE"] = df_harm["SE_orig"]
-        df_harm.drop(columns=["pqtlID", "chr", "pos38", "SE_orig"], inplace=True)
+        # ---- CHECK SEQID & UNIPROT ----
+        believe_metadata = pd.read_csv(METADATA, sep="\t")
+        believe_metadata = believe_metadata.rename(columns={"notes_source_id": "SEQID"})
+
+        harm_seqids = df_harm["SEQID"].dropna()
+        if not harm_seqids.empty:
+            harm_seqids = set(harm_seqids)
+
+            # Find not-matching SEQIDs
+            believe_seqids = set(believe_metadata["SEQID"].dropna())
+            non_matching = [s for s in harm_seqids if s not in believe_seqids]
+            if non_matching:
+                print(
+                    f"WARNING {cohort}: {len(non_matching)} SEQIDs not found. "
+                    f"SEQIDs not found: {non_matching[:10]}"
+                )
+
+            # Check UniProt consistency for matched SEQIDs
+            believe_metadata["trait_protein_ids"] = believe_metadata["trait_protein_ids"].str.strip().str.upper()
+            df_harm["UNIPROT"] = df_harm["UNIPROT"].str.strip().str.upper()
+            merged = believe_metadata.merge(df_harm, on="SEQID", how="inner")
+            uniprot_mismatch = merged[merged["trait_protein_ids"] != merged["UNIPROT"]][["SEQID", "trait_protein_ids", "UNIPROT"]].drop_duplicates()
+            if not uniprot_mismatch.empty:
+                print(
+                    f"WARNING {cohort}: {len(uniprot_mismatch)} SEQIDs with UNIPROT mismatches. "
+                    f"SEQIDs with UNIPROT mismatches: {uniprot_mismatch}"
+                )
 
 
-    # ---- BACK-UP MLOG10P (pqtl_interval_chris_meta) ----
-    if cohort == "pqtl_interval_chris_meta":
-        df_harm = df_harm.merge(
-            df_raw[["pqtlID", "chr", "pos38", "MLOG10P_orig"]],
-            left_on=["PQTLID", "CHR", "POS"],
-            right_on=["pqtlID", "chr", "pos38"],
-            how="left",
-        )
-        df_harm["MLOG10P"] = df_harm["MLOG10P_orig"]
-        df_harm.drop(columns=["pqtlID", "chr", "pos38", "MLOG10P_orig"], inplace=True)
+        # ---- SAVE ----
+        df_harm.to_csv(tsv_out, sep="\t", index=False)
+        print(f"Saving: {tsv_out}")
 
 
-    # ---- CHECK SEQID & UNIPROT ----
-    believe_metadata = pd.read_csv(METADATA, sep="\t")
-    believe_metadata = believe_metadata.rename(columns={"notes_source_id": "SEQID"})
+        # ---- SAVE SHEET ----
+        print(f"Writing sheet: {sheet}")
+        df_harm.to_excel(writer, sheet_name=sheet, index=False)
 
-    harm_seqids = df_harm["SEQID"].dropna()
-    if not harm_seqids.empty:
-        harm_seqids = set(harm_seqids)
 
-        # Find not-matching SEQIDs
-        believe_seqids = set(believe_metadata["SEQID"].dropna())
-        non_matching = [s for s in harm_seqids if s not in believe_seqids]
-        if non_matching:
+        # ---- COUNT VARIANT LOSS FROM LIFTOVER (TOTAL) ----
+        loss_liftover = df_harm["POS"].isna().sum() if "POS" in df_harm.columns else np.nan
+        if loss_liftover > 0:
+            pos37_vals = df_harm.loc[df_harm["POS"].isna(), "POS37"].dropna().unique()
             print(
-                f"WARNING {cohort}: {len(non_matching)} SEQIDs not found. "
-                f"SEQIDs not found: {non_matching[:10]}"
+                f"WARNING {cohort}: POS is NA for {loss_liftover} rows. "
+                f"Unique POS37 values: {pos37_vals}"
             )
 
-        # Check UniProt consistency for matched SEQIDs
-        believe_metadata["trait_protein_ids"] = believe_metadata["trait_protein_ids"].str.strip().str.upper()
-        df_harm["UNIPROT"] = df_harm["UNIPROT"].str.strip().str.upper()
-        merged = believe_metadata.merge(df_harm, on="SEQID", how="inner")
-        uniprot_mismatch = merged[merged["trait_protein_ids"] != merged["UNIPROT"]][["SEQID", "trait_protein_ids", "UNIPROT"]].drop_duplicates()
-        if not uniprot_mismatch.empty:
-            print(
-                f"WARNING {cohort}: {len(uniprot_mismatch)} SEQIDs with UNIPROT mismatches. "
-                f"SEQIDs with UNIPROT mismatches: {uniprot_mismatch}"
-            )
+
+        # ---- COUNT MULTI-ALLELIC SNPS/LOCI ----
+        multiallelic_snps_mask = df_harm.groupby(["CHR", "POS"])["SNPID"].transform("nunique").gt(1)
+        nr_multiallelic_snps = multiallelic_snps_mask.sum()
+        nr_multiallelic_loci = df_harm.groupby(["CHR", "POS"])["SNPID"].nunique().gt(1).sum()
+        if nr_multiallelic_snps > 0:
+            multiallelic_snps_df = df_harm[multiallelic_snps_mask][["PQTLID", "SEQID", "UNIPROT", "SNPID"]]
+            multiallelic_snps_df = multiallelic_snps_df.drop_duplicates().reset_index(drop=True)
+            nr_multiallelic_snps = len(multiallelic_snps_df)
 
 
-    # ---- SAVE ----
-    df_harm.to_csv(tsv_out, sep="\t", index=False)
-    print(f"Saving: {tsv_out}")
+        # ---- SUMMARY ----
+        summary_rows.append([
+            cohort,
+            n_raw,
+            n_harm,
+            loss,
+            loss_di,
+            loss_liftover,
+            nr_multiallelic_snps,
+            nr_multiallelic_loci
+        ])
 
 
-    # ---- COUNT VARIANT LOSS FROM LIFTOVER (TOTAL) ----
-    loss_liftover = df_harm["POS"].isna().sum() if "POS" in df_harm.columns else np.nan
-    if loss_liftover > 0:
-        pos37_vals = df_harm.loc[df_harm["POS"].isna(), "POS37"].dropna().unique()
-        print(
-            f"WARNING {cohort}: POS is NA for {loss_liftover} rows. "
-            f"Unique POS37 values: {pos37_vals}"
-        )
-
-
-    # ---- COUNT MULTI-ALLELIC SNPS/LOCI ----
-    multiallelic_snps_mask = df_harm.groupby(["CHR", "POS"])["SNPID"].transform("nunique").gt(1)
-    nr_multiallelic_snps = multiallelic_snps_mask.sum()
-    nr_multiallelic_loci = df_harm.groupby(["CHR", "POS"])["SNPID"].nunique().gt(1).sum()
-    if nr_multiallelic_snps > 0:
-        multiallelic_snps_df = df_harm[multiallelic_snps_mask][["PQTLID", "SEQID", "UNIPROT", "SNPID"]]
-        multiallelic_snps_df = multiallelic_snps_df.drop_duplicates().reset_index(drop=True)
-        nr_multiallelic_snps = len(multiallelic_snps_df)
-
-
-    # ---- SUMMARY ----
-    summary_rows.append([
-        cohort,
-        n_raw,
-        n_harm,
-        loss,
-        loss_di,
-        loss_liftover,
-        nr_multiallelic_snps,
-        nr_multiallelic_loci
-    ])
-
-
-    # ---- CLEAN ----
-    print("Removing:", fname)
-    fname.unlink()
+        # ---- CLEAN ----
+        print("Removing:", fname)
+        fname.unlink()
+        
 
 
 # ---- CLEAN ----
