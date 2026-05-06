@@ -16,7 +16,7 @@ steps:
     params:
       run: True
     gl_params:
-      n_cores: *cores
+      threads: *cores
       normalize: True
       fixid_args:
         fixid: True
@@ -29,12 +29,12 @@ steps:
       run: True
     gl_params:
       basic_check: False
-      n_cores: *cores
+      threads: *cores
   sort_alphabetically:
     params:
       run: True
     gl_params:
-      n_cores: *cores
+      threads: *cores
   write_tsv:
     params:
       run: True
