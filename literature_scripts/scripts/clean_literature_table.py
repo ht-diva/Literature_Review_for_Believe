@@ -7,7 +7,7 @@ from utils import sanity_check, format_and_dtype, make_panels_mapping
 
 # ---- PATHS ----
 pm = PathManager()
-LITERATURE_INPUT = pm.get_inputs()["literature_table"]
+LITERATURE_INPUT = pm.get_inputs()["literature_table_liftover"]
 LITERATURE_INPUT_DIR = LITERATURE_INPUT.parent
 BELIEVE_METADATA = pm.get_config()["believe_metadata"]
 LITERATURE_PANEL = pm.get_config()["literature_panel"]

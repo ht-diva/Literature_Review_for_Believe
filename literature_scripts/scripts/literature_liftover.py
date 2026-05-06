@@ -235,11 +235,46 @@ with pd.ExcelWriter(OUTPUT) as writer:
         )
 
         # Update alleles
-        merged_df["OTHER_ALLELE"] = merged_df["REF"]
-        merged_df["EFFECT_ALLELE"] = merged_df["ALT"]
+        merged_df = (
+            merged_df
+            .assign(
+                OTHER_ALLELE_orig=merged_df["OTHER_ALLELE"],
+                EFFECT_ALLELE_org=merged_df["EFFECT_ALLELE"],
+                OTHER_ALLELE=merged_df["REF"],
+                EFFECT_ALLELE=merged_df["ALT"],
+            )
+            .drop(columns=["REF", "ALT"])
+        )
 
         # Flip the sign of BETA for swapped alleles
         merged_df.loc[merged_df["allele_status"] == "swapped", "BETA"] *= -1
         
         # Save the liftovered formatted file
         merged_df.to_excel(writer, sheet_name=sheet, index=False)
+
+
+        # ---- CLEAN ----
+
+        # Remove all intermediate files
+        paths_to_clean = [
+            vcf_file,
+            vcf_gz,
+            reheader_vcf,
+            sorted_vcf,
+            standard_vcf,
+            liftover_vcf,
+            liftover_txt,
+            liftover_sorted,
+            norm_split,
+            atom_vcf,
+        ]
+
+        for p in paths_to_clean:
+            if p.exists():
+                print("Removing:", p)
+                p.unlink()
+
+        # Remove all .tbi files
+        for p in OUTDIR.glob("*.tbi"):
+            print("Removing:", p)
+            p.unlink()

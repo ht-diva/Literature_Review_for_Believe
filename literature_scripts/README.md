@@ -22,17 +22,21 @@ run the following command:
 make add_studies
 ```
 
+The table `literature_table_all_somalogic_allstudies.xlsx` will be generated.
+
 ## 2. Literature Liftover
 
-To perform a liftover (pos37 to pos38), run the following command:
+To perform the liftover (pos37 to pos38), run the following command:
 
 ```
 make liftover
 ```
 
+The table `literature_table_all_somalogic_liftover.xlsx` will be generated.
+
 ## 3. Clean Literature Table
 
-Before harmonization, the original literature table `literature_table_all_somalogic.xlsx` is cleaned to `literature_table_all_somalogic_cleaned.xlsx` via:
+Before harmonization, the original literature table `literature_table_all_somalogic_liftover.xlsx` is cleaned to `literature_table_all_somalogic_cleaned.xlsx` via:
 
 ```
 make clean_table
