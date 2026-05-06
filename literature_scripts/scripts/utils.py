@@ -46,6 +46,13 @@ def format_and_dtype(df, dtype_map, numeric_cols):
     ordered_cols = expected_cols + [c for c in df.columns if c not in expected_cols]
     df = df[ordered_cols]
 
+    # Format chromosome
+    df["chr"] = (
+        df["chr"]
+        .astype(str)
+        .replace({"X": "23", "Y": "24"})
+    )
+
     # Numeric coercion
     for col in numeric_cols:
         if col in df.columns:
