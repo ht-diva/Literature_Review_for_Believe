@@ -18,7 +18,7 @@ steps:
     gl_params:
       threads: *cores
       normalize: True
-      fixid_args:
+      fix_id_kwargs:
         fixid: True
         overwrite: True
   infer_build: # see https://cloufield.github.io/gwaslab/InferBuild/
