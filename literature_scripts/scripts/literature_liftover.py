@@ -234,16 +234,20 @@ with pd.ExcelWriter(OUTPUT) as writer:
             default="different"
         )
 
-        # Update alleles
+        # Update SNPs
         merged_df = (
             merged_df
             .assign(
+                CHROM_orig=merged_df["chr"],
+                POS_orig=merged_df["pos38"],
                 OTHER_ALLELE_orig=merged_df["OTHER_ALLELE"],
                 EFFECT_ALLELE_org=merged_df["EFFECT_ALLELE"],
+                chr=merged_df["CHROM"],
+                pos38=merged_df["POS"],
                 OTHER_ALLELE=merged_df["REF"],
                 EFFECT_ALLELE=merged_df["ALT"],
             )
-            .drop(columns=["REF", "ALT"])
+            .drop(columns=["CHROM", "POS", "REF", "ALT"])
         )
 
         # Flip the sign of BETA for swapped alleles
