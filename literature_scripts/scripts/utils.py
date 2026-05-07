@@ -221,8 +221,8 @@ def sanity_check(df, cohort, panels_map, uniprot_check_df, missing_seqid_df, mis
     # ---- ALLELE CHECK ----
     n_alleles_orig = len(df)
     mask_bad_alleles = (
-        df["EFFECT_ALLELE"].astype(str).str.contains("!|\\.", regex=True) |
-        df["OTHER_ALLELE"].astype(str).str.contains("!|\\.", regex=True)
+        df["EFFECT_ALLELE"].astype(str).str.contains(r"!|\.|NAN", case=False, regex=True) |
+        df["OTHER_ALLELE"].astype(str).str.contains(r"!|\.|NAN", case=False, regex=True)
     )
     n_removed = mask_bad_alleles.sum()
     df = df.loc[~mask_bad_alleles].copy()

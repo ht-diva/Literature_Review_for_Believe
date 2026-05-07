@@ -44,7 +44,7 @@ make clean_table
 
 Cleaning includes: 
 
-1. removal of variants with bad alleles ("!" or ".")
+1. removal of variants with bad alleles ("!" or "." or "NAN")
 2. preliminary sanity checks for SeqIDs and UniProt IDs
 3. change mismatched UniProts to UniProt format in BELIEVE Metadata
 4. report literature's SEQIDs and UniProts missing in BELIEVE Metadata
