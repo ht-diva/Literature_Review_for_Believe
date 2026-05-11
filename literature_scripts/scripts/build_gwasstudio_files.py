@@ -402,7 +402,7 @@ def build_search_file(
             export \\
             --search-file {search_file_prefix} \\
             --get-regions-leadsnps {formatted_path} \\
-            --output-prefix {output_prefix}
+            --output-prefix {output_prefix}/{cohort_name}
         """
     )
 
