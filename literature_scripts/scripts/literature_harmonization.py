@@ -180,6 +180,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
                     f"WARNING {cohort}: {len(uniprot_mismatch)} SEQIDs with UNIPROT mismatches. "
                     f"SEQIDs with UNIPROT mismatches: {uniprot_mismatch}"
                 )
+        df_harm.drop_duplicates().reset_index(drop=True)
 
 
         # ---- SAVE ----
