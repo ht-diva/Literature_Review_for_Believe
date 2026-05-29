@@ -10,6 +10,24 @@ from scipy.stats import norm
 
 # ---- HELPER FUNCTIONS ----
 
+# Helper function to make unique identifier (variant key)
+def make_variant_key(df, id_col, chr_col, pos_col, a1_col, a2_col):
+    alleles = (
+        df[[a1_col, a2_col]]
+        .astype(str)
+        .apply(lambda x: "_".join(sorted(x)), axis=1)
+    )
+
+    return (
+        df[id_col].astype(str)
+        + "_"
+        + df[chr_col].astype(str)
+        + "_"
+        + df[pos_col].astype(str)
+        + "_"
+        + alleles
+    )
+
 
 # Helper function to align swapped multi-Prots
 # Example: P29460|Q9NPF7 <-> Q9NPF7|P29460

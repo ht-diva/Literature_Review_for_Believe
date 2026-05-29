@@ -239,11 +239,11 @@ with pd.ExcelWriter(OUTPUT) as writer:
             merged_df
             .assign(
                 CHROM_orig=merged_df["chr"],
-                POS_orig=merged_df["pos38"],
+                POS_orig=merged_df["pos37"],
                 OTHER_ALLELE_orig=merged_df["OTHER_ALLELE"],
                 EFFECT_ALLELE_org=merged_df["EFFECT_ALLELE"],
                 chr=merged_df["CHROM"],
-                pos38=merged_df["POS"],
+                pos37=merged_df["POS"],
                 OTHER_ALLELE=merged_df["REF"],
                 EFFECT_ALLELE=merged_df["ALT"],
             )

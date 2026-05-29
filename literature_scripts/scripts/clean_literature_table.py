@@ -94,7 +94,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
 
         # ---- SAVE ----
         print(f"Writing sheet: {sheet}")
-        df.drop_duplicates().reset_index(drop=True)
+        df = df.drop_duplicates().reset_index(drop=True)
         df.to_excel(writer, sheet_name=sheet, index=False)
 
 
