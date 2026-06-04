@@ -26,6 +26,7 @@ class PathManager:
         }
         self.config = {
             'config_harmonize' : Path(root_project, literature_config_path, 'config_harmonize.yml'),
+            'config_liftover_harmonize' : Path(root_project, literature_config_path, 'config_liftover_harmonize.yml'),
             'believe_metadata' : Path(root_project, literature_config_path, 'believe_metadata.tsv'),
             'literature_panel' : Path(root_project, literature_config_path, 'literature_protein_panel.tsv'),
             'panels_map' : Path(root_project, literature_config_path, 'believe_literature_panels_map.tsv'),
@@ -58,3 +59,4 @@ class PathManager:
         if exists and not self.outputs[label].exists():
             return None
         return output_path
+

@@ -11,10 +11,11 @@ from utils import write_vcf
 
 # ---- PATHS ----
 pm = PathManager()
-LITERATURE_INPUT = pm.get_inputs()["literature_table"]
+LITERATURE_INPUT = pm.get_inputs()["literature_table_harmonized"]
 OUTPUT = pm.get_inputs()["literature_table_liftover"]
 OUTDIR = OUTPUT.parent
 OUTDIR.mkdir(parents=True, exist_ok=True)
+OUTDIR_HARM = pm.get_output("literature_harmonized", exists=False)
 singularity_image = "/ssu/gassu/singularity/bcftools_latest.sif"
 
 
@@ -54,7 +55,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # Skip GRCh38
         refgenome = studies.loc[pqtl_studies == sheet.lower(), "ReferenceGenome"].item()
         print(f"{sheet} Reference Genome: {refgenome}")
-        if refgenome == "GRCh38":
+        if refgenome in ["GRCh38", "GRCh37/GRCh38"]:
             df.to_excel(writer, sheet_name=sheet, index=False)
             print(" ...skip liftover.")
             continue
@@ -78,10 +79,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         sorted_vcf = OUTDIR / f"{stem}_to_convert_from37_to38.sorted.vcf.gz"
         standard_vcf = OUTDIR / f"{stem}_to_convert_from37_to38_standard.vcf.gz"
         liftover_vcf = OUTDIR / f"{stem}_to_convert_from37_to38_liftover.vcf"
-        liftover_txt = OUTDIR / f"{stem}_liftover.vcf.txt"
         liftover_sorted = OUTDIR / f"{stem}_to_convert_from37_to38_liftover.vcf.gz"
-        norm_split = OUTDIR / f"{stem}_to_convert_from37_to38_liftover.hg38.norm.split.vcf.gz"
-        atom_vcf = OUTDIR / f"{stem}_to_convert_from37_to38_liftover.hg38.norm.split.atom.vcf.gz"
 
         # 1. BGZIP
         run(bcftools(singularity_image, [
@@ -117,27 +115,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
             sorted_vcf
         ]))
 
-        # 5. Liftover
-        with open(liftover_vcf, "wb") as out:
-            run(bcftools(singularity_image, [
-                "+liftover",
-                "--no-version",
-                "-Ou",
-                standard_vcf,
-                "--",
-                "-s", hg19_fa,
-                "-f", hg38_fa,
-                "-c", chain
-            ]), stdout=out)
-
-        # 6. View → txt
-        with open(liftover_txt, "wb") as out:
-            run(bcftools(singularity_image, [
-                "view",
-                liftover_vcf
-            ]), stdout=out)
-
-        # 7. Liftover Pipe → Sort
+        # 5. Liftover Pipe → Sort
         p1 = subprocess.Popen(
             bcftools(singularity_image, [
                 "+liftover",
@@ -165,35 +143,12 @@ with pd.ExcelWriter(OUTPUT) as writer:
         p2.communicate()
         pysam.tabix_index(str(liftover_sorted), preset="vcf", force=True)
 
-        # 8. Norm hg38 + Split
-        run(bcftools(singularity_image, [
-            "norm",
-            "-f", hg38_fa,
-            "-c", "s",
-            "-m", "-both",
-            "-Oz",
-            "-o", norm_split,
-            liftover_sorted
-        ]))
-        pysam.tabix_index(str(norm_split), preset="vcf", force=True)
-
-        # 9. Atomize
-        run(bcftools(singularity_image, [
-            "norm",
-            "-f", hg38_fa,
-            "-a",
-            "-Oz",
-            "-o", atom_vcf,
-            norm_split
-        ]))
-        pysam.tabix_index(str(atom_vcf), preset="vcf", force=True)
-
 
         # ---- LOAD AND FORMAT LIFTOVERED FILES ----
         
         # Read the liftovered VCF file
         vcf_rows = []
-        with gzip.open(atom_vcf, "rt") as f:
+        with gzip.open(liftover_sorted, "rt") as f:
             for line in f:
                 if not line.startswith("#"):
                     vcf_rows.append(line.strip().split("\t")[:5])
@@ -201,60 +156,50 @@ with pd.ExcelWriter(OUTPUT) as writer:
         vcf_df = pd.DataFrame(vcf_rows, columns=["CHROM", "POS", "ID", "REF", "ALT"]).drop_duplicates()
         
         vcf_df["CHROM"] = vcf_df["CHROM"].str.replace("^chr", "", regex=True)
-        df["chr"] = df["chr"].astype(str)
-        df["pos38"] = df["pos38"].astype(str)
+        df["CHR"] = df["CHR"].astype(str)
+        df["POS"] = df["POS"].astype(str)
+        df["POS37"] = df["POS37"].astype(str)
         df["rsID"] = df["rsID"].astype(str)
         vcf_df["POS"] = vcf_df["POS"].astype(str)
         vcf_df["ID"] = vcf_df["ID"].astype(str)
 
+        vcf_df = vcf_df.rename(columns={
+            "CHROM": "CHR_lift",
+            "POS": "POS_lift",
+            "ID": "rsID",
+        })
+
         # Merge
         merged_df = df.merge(
             vcf_df,
-            left_on=["chr", "pos38", "rsID"],
-            right_on=["CHROM", "POS", "ID"],
+            left_on=["CHR", "POS37", "rsID"],
+            right_on=["CHR_lift", "POS_lift", "rsID"],
             how="left"
         )
 
         # Allele formatting
         merged_df["REF"] = merged_df["REF"].replace("nan", np.nan)
         merged_df["ALT"] = merged_df["ALT"].replace("nan", np.nan)
-        for col in ["OTHER_ALLELE", "EFFECT_ALLELE", "REF", "ALT"]:
+        for col in ["NEA", "EA", "REF", "ALT"]:
             merged_df[col] = merged_df[col].astype(str).str.upper().str.strip()
-
-        # Allele status
-        merged_df["allele_status"] = np.select(
-            [
-                merged_df["REF"].isna() | merged_df["ALT"].isna(),
-                (merged_df["OTHER_ALLELE"] == merged_df["REF"]) &
-                (merged_df["EFFECT_ALLELE"] == merged_df["ALT"]),
-                (merged_df["OTHER_ALLELE"] == merged_df["ALT"]) &
-                (merged_df["EFFECT_ALLELE"] == merged_df["REF"]),
-            ],
-            ["no_match_in_vcf", "match", "swapped"],
-            default="different"
-        )
 
         # Update SNPs
         merged_df = (
             merged_df
             .assign(
-                CHROM_orig=merged_df["chr"],
-                POS_orig=merged_df["pos37"],
-                OTHER_ALLELE_orig=merged_df["OTHER_ALLELE"],
-                EFFECT_ALLELE_org=merged_df["EFFECT_ALLELE"],
-                chr=merged_df["CHROM"],
-                pos37=merged_df["POS"],
-                OTHER_ALLELE=merged_df["REF"],
-                EFFECT_ALLELE=merged_df["ALT"],
+                CHR=merged_df["CHR_lift"],
+                POS37=merged_df["POS"],
+                POS=merged_df["POS_lift"],
             )
-            .drop(columns=["CHROM", "POS", "REF", "ALT"])
+            .drop(columns=["CHR_lift", "POS_lift", "REF", "ALT"])
         )
-
-        # Flip the sign of BETA for swapped alleles
-        merged_df.loc[merged_df["allele_status"] == "swapped", "BETA"] *= -1
         
         # Save the liftovered formatted file
         merged_df.to_excel(writer, sheet_name=sheet, index=False)
+
+        # Update harmonized files for GWASStudio file built
+        tsv_out = OUTDIR_HARM / f"{cohort}.gwaslab.tsv"
+        merged_df.to_csv(tsv_out, sep="\t", index=False)
 
 
         # ---- CLEAN ----
@@ -267,10 +212,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
             sorted_vcf,
             standard_vcf,
             liftover_vcf,
-            liftover_txt,
             liftover_sorted,
-            norm_split,
-            atom_vcf,
         ]
 
         for p in paths_to_clean:

@@ -16,6 +16,7 @@ LITERATURE_INPUT = pm.get_inputs()["literature_table_cleaned"]
 LITERATURE_INPUT_DIR = LITERATURE_INPUT.parent
 CONFIGS = pm.get_config()
 CONFIG_HARMONIZE = CONFIGS["config_harmonize"]
+CONFIG_LIFTOVER_HARMONIZE = CONFIGS["config_liftover_harmonize"]
 METADATA = CONFIGS["believe_metadata"]
 FORMAT = "literature_rev"
 SEP = "\t"
@@ -48,11 +49,18 @@ tmp_harmonize_config = build_tmp_config(
     CONFIG_HARMONIZE,
     "config_harmonize_tmp.yml",
 )
+tmp_liftover_harmonize_config = build_tmp_config(
+    CONFIG_LIFTOVER_HARMONIZE,
+    "config_liftover_harmonize_tmp.yml",
+)
 
 
 # ---- HARMONIZE LITERATURE TABLES ----
 skip_sheets = {"credits", "variant", "protein", "olink", "cohort", "study"}
 xls = pd.ExcelFile(LITERATURE_INPUT)
+print(f"INPUT: {LITERATURE_INPUT}")
+studies = pd.read_excel(xls, sheet_name="STUDY")
+pqtl_studies = "pqtl_" + studies["StudyNAME"].str.lower()
 summary_rows = []
 
 with pd.ExcelWriter(OUTPUT) as writer:
@@ -67,6 +75,21 @@ with pd.ExcelWriter(OUTPUT) as writer:
         cohort = sheet
         print(f"\n=== Processing {[str(cohort)]} ===")
         print(f"Extracting: {cohort}")
+
+
+        # ---- REFERENCE GENOME ----
+        refgenome = studies.loc[pqtl_studies == sheet.lower(), "ReferenceGenome"].item()
+        print(f"{sheet} Reference Genome: {refgenome}")
+
+        # For GRCh37, swap positions (37 <-> 38):
+        # For strand alignment with ref. GRCh37, POS is the target (mapped from pos38 in harmonization)
+        # For liftover in the next step, pos38 is needed to merge with liftovered output
+        if refgenome == "GRCh37":
+            pos37 = df["pos37"]
+            pos38 = df["pos38"]
+            df["pos38"] = pos37
+            df["pos37"] = pos38
+            print("Swap POS for strand alignment...")
 
         fname = LITERATURE_INPUT_DIR / f"{sheet}.tsv"
         df.to_csv(fname, sep="\t", index=False)
@@ -89,15 +112,27 @@ with pd.ExcelWriter(OUTPUT) as writer:
 
 
         # ---- RUN GWASPIPE HARMONIZATION ----
-        cmd = [
-            "gwaspipe",
-            "-f", FORMAT,
-            "-s", SEP,
-            "-c", str(tmp_harmonize_config),
-            "-i", str(fname),
-            "-o", str(OUTDIR)
-        ]
-        print("Running Harmonization:", " ".join(cmd))
+        if refgenome == "GRCh37":
+            cmd = [
+                "gwaspipe",
+                "-f", FORMAT,
+                "-s", SEP,
+                "-c", str(tmp_liftover_harmonize_config),
+                "-i", str(fname),
+                "-o", str(OUTDIR)
+            ]
+            print("Running + Strand Alignment Harmonization:", " ".join(cmd))
+        else:
+            cmd = [
+                "gwaspipe",
+                "-f", FORMAT,
+                "-s", SEP,
+                "-c", str(tmp_harmonize_config),
+                "-i", str(fname),
+                "-o", str(OUTDIR)
+            ]
+            print("Running Harmonization:", " ".join(cmd))
+
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         gz_out = OUTDIR / f"{cohort}.gwaslab.tsv.gz"
@@ -253,6 +288,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
 
 # ---- CLEAN ----
 tmp_harmonize_config.unlink(missing_ok=True)
+tmp_liftover_harmonize_config.unlink(missing_ok=True)
 
 
 # ---- SAVE SUMMARY ----

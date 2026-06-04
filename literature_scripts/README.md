@@ -24,19 +24,9 @@ make add_studies
 
 The table `literature_table_all_somalogic_allstudies.xlsx` will be generated.
 
-## 2. Literature Liftover
+## 2. Clean Literature Table
 
-To perform the liftover (pos37 to pos38), run the following command:
-
-```
-make liftover
-```
-
-The table `literature_table_all_somalogic_liftover.xlsx` will be generated.
-
-## 3. Clean Literature Table
-
-Before harmonization, the original literature table `literature_table_all_somalogic_liftover.xlsx` is cleaned to `literature_table_all_somalogic_cleaned.xlsx` via:
+Before harmonization, the literature table `literature_table_all_somalogic_allstudies.xlsx` is cleaned to `literature_table_all_somalogic_cleaned.xlsx` via:
 
 ```
 make clean_table
@@ -49,7 +39,7 @@ Cleaning includes:
 3. change mismatched UniProts to UniProt format in BELIEVE Metadata
 4. report literature's SEQIDs and UniProts missing in BELIEVE Metadata
 
-## 4. Literature Table Harmonization
+## 3. Literature Table Harmonization
 
 To harmonize the literature table, run the following command:
 
@@ -64,6 +54,16 @@ make harmonization
 * All harmonized tables will be generated in the `literature_harmonized` folder, along with cohort-specific log files and a summmary table `harmonization_summary.tsv`.
 
 * Along with the table files, the command creates a release file **release.txt** with the code commit ID that generated them.
+
+## 4. Literature Liftover
+
+To perform bcftool liftover (pos37 to pos38), run the following command:
+
+```
+make liftover
+```
+
+The table `literature_table_all_somalogic_liftover.xlsx` will be generated.
 
 ## 5. GWASStudio Files Generation
 

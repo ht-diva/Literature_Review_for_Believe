@@ -521,9 +521,16 @@ def write_vcf(df, output_filename):
     with open(output_filename, "w") as vcf_file:
 
         # Ensure POS is valid integer
-        df["pos37"] = pd.to_numeric(df["pos37"], errors="coerce")
-        df = df.dropna(subset=["pos37"])
-        df["pos37"] = df["pos37"].astype(int)
+        df["POS"] = pd.to_numeric(df["POS"], errors="coerce")
+        df = df.dropna(subset=["POS"])
+        df["POS"] = df["POS"].astype(int)
+
+        # Convert CHR for bcftools processing
+        df["CHR"] = df["CHR"].astype(str).replace({
+            "23": "X",
+            "24": "Y",
+            "25": "MT"
+        })
 
         # Write the VCF header
         vcf_file.write("##fileformat=VCFv4.2\n")
@@ -537,19 +544,19 @@ def write_vcf(df, output_filename):
 
         # Iterate through rows
         for _, row in df.iterrows():
-            chrom = row["chr"]
-            pos = row["pos37"]
+            chrom = row["CHR"]
+            pos = row["POS"]
             vid = row["rsID"]
-            ref = row["EFFECT_ALLELE"]
-            alt = row["OTHER_ALLELE"]
+            ref = row["EA"]
+            alt = row["NEA"]
             qual = "."
             filt = "."
 
             info = (
                 f"BETA={row['BETA']};"
                 f"SE={row['SE']};"
-                f"N={row['SAMPLE_SIZE']};"
-                f"MLOG10P={row['minuslog10pval']}"
+                f"N={row['N']};"
+                f"MLOG10P={row['MLOG10P']}"
             )
 
             line = f"{chrom}\t{pos}\t{vid}\t{ref}\t{alt}\t{qual}\t{filt}\t{info}\n"
