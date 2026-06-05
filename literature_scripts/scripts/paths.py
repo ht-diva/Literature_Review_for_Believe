@@ -25,8 +25,8 @@ class PathManager:
             'literature_table_harmonized' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_harmonized.xlsx'),
         }
         self.config = {
-            'config_harmonize' : Path(root_project, literature_config_path, 'config_harmonize.yml'),
-            'config_liftover_harmonize' : Path(root_project, literature_config_path, 'config_liftover_harmonize.yml'),
+            'config_harmonize_build38' : Path(root_project, literature_config_path, 'config_harmonize_build38.yml'),
+            'config_harmonize_build37' : Path(root_project, literature_config_path, 'config_harmonize_build37.yml'),
             'believe_metadata' : Path(root_project, literature_config_path, 'believe_metadata.tsv'),
             'literature_panel' : Path(root_project, literature_config_path, 'literature_protein_panel.tsv'),
             'panels_map' : Path(root_project, literature_config_path, 'believe_literature_panels_map.tsv'),

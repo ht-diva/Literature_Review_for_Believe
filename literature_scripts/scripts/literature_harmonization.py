@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import pandas as pd
 import numpy as np
+import re
 
 from pathlib import Path
 from ruamel.yaml import YAML
@@ -15,8 +16,8 @@ pm = PathManager()
 LITERATURE_INPUT = pm.get_inputs()["literature_table_cleaned"]
 LITERATURE_INPUT_DIR = LITERATURE_INPUT.parent
 CONFIGS = pm.get_config()
-CONFIG_HARMONIZE = CONFIGS["config_harmonize"]
-CONFIG_LIFTOVER_HARMONIZE = CONFIGS["config_liftover_harmonize"]
+CONFIG_HARMONIZE_BUILD38 = CONFIGS["config_harmonize_build38"]
+CONFIG_HARMONIZE_BUILD37 = CONFIGS["config_harmonize_build37"]
 METADATA = CONFIGS["believe_metadata"]
 FORMAT = "literature_rev"
 SEP = "\t"
@@ -45,13 +46,13 @@ def build_tmp_config(base_config: Path, tmp_name: str) -> Path:
 
 
 # ---- FORMATBOOKS ----
-tmp_harmonize_config = build_tmp_config(
-    CONFIG_HARMONIZE,
-    "config_harmonize_tmp.yml",
+tmp_harmonize_build38_config = build_tmp_config(
+    CONFIG_HARMONIZE_BUILD38,
+    "config_harmonize_build38_tmp.yml",
 )
-tmp_liftover_harmonize_config = build_tmp_config(
-    CONFIG_LIFTOVER_HARMONIZE,
-    "config_liftover_harmonize_tmp.yml",
+tmp_harmonize_build37_config = build_tmp_config(
+    CONFIG_HARMONIZE_BUILD37,
+    "config_harmonize_build37_tmp.yml",
 )
 
 
@@ -117,21 +118,21 @@ with pd.ExcelWriter(OUTPUT) as writer:
                 "gwaspipe",
                 "-f", FORMAT,
                 "-s", SEP,
-                "-c", str(tmp_liftover_harmonize_config),
+                "-c", str(tmp_harmonize_build37_config),
                 "-i", str(fname),
                 "-o", str(OUTDIR)
             ]
-            print("Running + Strand Alignment Harmonization:", " ".join(cmd))
+            print("Running Harmonization for GRCh37:", " ".join(cmd))
         else:
             cmd = [
                 "gwaspipe",
                 "-f", FORMAT,
                 "-s", SEP,
-                "-c", str(tmp_harmonize_config),
+                "-c", str(tmp_harmonize_build38_config),
                 "-i", str(fname),
                 "-o", str(OUTDIR)
             ]
-            print("Running Harmonization:", " ".join(cmd))
+            print("Running Harmonization for GRCh38:", " ".join(cmd))
 
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -145,7 +146,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         df_harm = pd.read_csv(tsv_out, sep="\t")
 
 
-        # ---- COUNT VARIANT LOSS FROM BAD STATISTICS ----
+        # ---- COUNT VARIANT LOSS (TOTAL) ----
         n_raw = len(df_raw)
         n_harm = len(df_harm)
         loss = n_raw - n_harm
@@ -247,12 +248,12 @@ with pd.ExcelWriter(OUTPUT) as writer:
         df_harm.to_excel(writer, sheet_name=sheet, index=False)
 
 
-        # ---- COUNT VARIANT LOSS FROM LIFTOVER (TOTAL) ----
-        loss_liftover = df_harm["POS"].isna().sum() if "POS" in df_harm.columns else np.nan
-        if loss_liftover > 0:
+        # ---- CHECK: EMPTY POS ----
+        pos_nans = df_harm["POS"].isna().sum() if "POS" in df_harm.columns else np.nan
+        if pos_nans > 0:
             pos37_vals = df_harm.loc[df_harm["POS"].isna(), "POS37"].dropna().unique()
             print(
-                f"WARNING {cohort}: POS is NA for {loss_liftover} rows. "
+                f"WARNING {cohort}: POS is NA for {pos_nans} rows. "
                 f"Unique POS37 values: {pos37_vals}"
             )
 
@@ -267,6 +268,27 @@ with pd.ExcelWriter(OUTPUT) as writer:
             nr_multiallelic_snps = len(multiallelic_snps_df)
 
 
+        # ---- EXTRACT LOG INFO ----
+
+        # Log information
+        ref_match_log = None
+        ref_strand_flip_log = None
+        palindromic_snps_log = None
+
+        log_out = tsv_out.replace(".tsv", ".log")
+        timestamp_pat = re.compile(r'^[\d:/\s-]+-\s*')
+
+        with log_out.open("r") as fp:
+            for line in fp:
+                line = timestamp_pat.sub("", line).strip()
+                if "raw matching rate" in line.lower():
+                    ref_match_log = float(line.split(":")[-1].strip().rstrip("%"))
+                if "variants flipped" in line.lower():
+                    ref_strand_flip_log = float(line.split(":")[-1].strip().rstrip("%"))
+                if "both allele on genome + unable to distinguish" in line.lower():
+                    palindromic_snps_log = float(line.split(":")[-1].strip().rstrip("%"))
+
+
         # ---- SUMMARY ----
         summary_rows.append([
             cohort,
@@ -274,7 +296,9 @@ with pd.ExcelWriter(OUTPUT) as writer:
             n_harm,
             loss,
             loss_di,
-            loss_liftover,
+            ref_match_log,
+            ref_strand_flip_log,
+            palindromic_snps_log,
             nr_multiallelic_snps,
             nr_multiallelic_loci
         ])
@@ -287,8 +311,8 @@ with pd.ExcelWriter(OUTPUT) as writer:
 
 
 # ---- CLEAN ----
-tmp_harmonize_config.unlink(missing_ok=True)
-tmp_liftover_harmonize_config.unlink(missing_ok=True)
+tmp_harmonize_build38_config.unlink(missing_ok=True)
+tmp_harmonize_build37_config.unlink(missing_ok=True)
 
 
 # ---- SAVE SUMMARY ----
@@ -298,9 +322,11 @@ summary_df = pd.DataFrame(
         "COHORT",
         "VARIANT_NR_RAW",
         "VARIANT_NR_HARM",
-        "VARIANT_LOSS_STATS",
+        "VARIANT_LOSS_TOTAL",
         "VARIANT_LOSS_DI",
-        "VARIANT_LOSS_LIFTOVER",
+        "REF_MATCH",
+        "REF_FLIP_VARIANT_NR",
+        "REF_PALINDROMIC_NR",
         "MULTI-ALLELIC_SNPS",
         "MULTI-ALLELIC_LOCI"
     ]

@@ -517,7 +517,7 @@ def save_last_commit_id_to_file(file_name):
 
 # ---- CONVERT TO VCF FUNCTION ----
 
-def write_vcf(df, output_filename):
+def write_vcf(df, output_filename, build="GRCh37"):
     with open(output_filename, "w") as vcf_file:
 
         # Ensure POS is valid integer
@@ -531,15 +531,20 @@ def write_vcf(df, output_filename):
             "24": "Y",
             "25": "MT"
         })
+        if build == "GRCh38":
+            df["CHR"] = df["CHR"].apply(lambda x: f"chr{x}" if not x.startswith("chr") else x)
 
         # Write the VCF header
         vcf_file.write("##fileformat=VCFv4.2\n")
         vcf_file.write("##source=PythonScript\n")
-        vcf_file.write("##reference=GRCh37\n")
+        vcf_file.write(f"##reference={build}\n")
         vcf_file.write('##INFO=<ID=BETA,Number=1,Type=Float,Description=Effect Size Estimate>\n')
         vcf_file.write('##INFO=<ID=SE,Number=1,Type=Float,Description=Standard Error>\n')
         vcf_file.write('##INFO=<ID=N,Number=1,Type=Integer,Description=Sample Size>\n')
         vcf_file.write('##INFO=<ID=MLOG10P,Number=1,Type=Float,Description=Negative Log10 P-value>\n')
+        chroms = df["CHR"].unique()
+        for c in chroms:
+            vcf_file.write(f"##contig=<ID={c}>\n")
         vcf_file.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
 
         # Iterate through rows
