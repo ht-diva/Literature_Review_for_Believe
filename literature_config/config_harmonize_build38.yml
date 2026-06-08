@@ -29,7 +29,7 @@ steps:
       run: True
     gl_params:
       basic_check: False
-      ref_seq: "/group/diangelantonio/public_data/liftOver/hg38.fa"
+      ref_seq: "/group/diangelantonio/public_data/liftOver/hg38.nochr.fa"
       ref_rsid_vcf: "/group/diangelantonio/public_data/liftOver/All_20180418.vcf.gz"
       threads: *cores
   sort_alphabetically:

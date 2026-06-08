@@ -275,7 +275,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         ref_strand_flip_log = None
         palindromic_snps_log = None
 
-        log_out = tsv_out.replace(".tsv", ".log")
+        log_out = tsv_out.with_suffix(".log")
         timestamp_pat = re.compile(r'^[\d:/\s-]+-\s*')
 
         with log_out.open("r") as fp:
@@ -284,9 +284,9 @@ with pd.ExcelWriter(OUTPUT) as writer:
                 if "raw matching rate" in line.lower():
                     ref_match_log = float(line.split(":")[-1].strip().rstrip("%"))
                 if "variants flipped" in line.lower():
-                    ref_strand_flip_log = float(line.split(":")[-1].strip().rstrip("%"))
+                    ref_strand_flip_log = int(line.split(":")[-1].strip())
                 if "both allele on genome + unable to distinguish" in line.lower():
-                    palindromic_snps_log = float(line.split(":")[-1].strip().rstrip("%"))
+                    palindromic_snps_log = int(line.split(":")[-1].strip())
 
 
         # ---- SUMMARY ----

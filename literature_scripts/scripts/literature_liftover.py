@@ -122,7 +122,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
                 subprocess.run(
                     bcftools(singularity_image, [
                         "+fixref",
-                        vcf_file,
+                        standard_vcf,
                         "-Oz",
                         "-o", fixref_vcf,
                         "--",
