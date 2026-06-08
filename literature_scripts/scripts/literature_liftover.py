@@ -273,7 +273,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
                 CHR=merged_df["CHR_lift"].combine_first(merged_df["CHR"]),
                 POS37=merged_df["POS"],
                 POS=merged_df["POS_lift"].combine_first(merged_df["POS"]),
-                SNPID=merged_df["CHR"] + ":" + merged_df["POS"] + merged_df["EA"] + merged_df["NEA"],
+                SNPID=merged_df["CHR"] + ":" + merged_df["POS"] + ":" + merged_df["EA"] + ":" + merged_df["NEA"],
             )
             .drop(columns=["CHR_lift", "POS_lift", "REF", "ALT"])
         )
