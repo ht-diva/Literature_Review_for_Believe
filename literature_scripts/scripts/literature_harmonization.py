@@ -165,47 +165,28 @@ with pd.ExcelWriter(OUTPUT) as writer:
         loss_di = n_harm_di - n_harm
 
 
-        # ---- ADD UNIQUE VARIANT KEY ----
-        if cohort in ["pqtl_QMDiab", "pqtl_interval_chris_meta"]:
-            df_raw["merge_key"] = make_variant_key(
-                df_raw,
-                "pqtlID",
-                "chr",
-                "pos38",
-                "EFFECT_ALLELE",
-                "OTHER_ALLELE",
-            )
-
-            df_harm["merge_key"] = make_variant_key(
-                df_harm,
-                "PQTLID",
-                "CHR",
-                "POS",
-                "EA",
-                "NEA",
-            )
-
-
         # ---- BACK-UP SE (pqtl_QMDiab) ----
         if cohort == "pqtl_QMDiab":
             df_harm = df_harm.merge(
-                df_raw[["merge_key", "SE_orig"]],
-                on="merge_key",
+                df_raw[["pqtlID", "chr", "pos38", "SE_orig"]],
+                left_on=["PQTLID", "CHR", "POS"],
+                right_on=["pqtlID", "chr", "pos38"],
                 how="left",
             ).drop_duplicates().reset_index(drop=True)
             df_harm["SE"] = df_harm["SE_orig"]
-            df_harm.drop(columns=["merge_key", "SE_orig"], inplace=True)
+            df_harm.drop(columns=["pqtlID", "chr", "pos38", "SE_orig"], inplace=True)
 
 
         # ---- BACK-UP MLOG10P (pqtl_interval_chris_meta) ----
         if cohort == "pqtl_interval_chris_meta":
             df_harm = df_harm.merge(
-                df_raw[["merge_key", "MLOG10P_orig"]],
-                on="merge_key",
+                df_raw[["pqtlID", "chr", "pos38", "MLOG10P_orig"]],
+                left_on=["PQTLID", "CHR", "POS"],
+                right_on=["pqtlID", "chr", "pos38"],
                 how="left",
             ).drop_duplicates().reset_index(drop=True)
             df_harm["MLOG10P"] = df_harm["MLOG10P_orig"]
-            df_harm.drop(columns=["merge_key", "MLOG10P_orig"], inplace=True)
+            df_harm.drop(columns=["pqtlID", "chr", "pos38", "MLOG10P_orig"], inplace=True)
 
 
         # ---- CHECK SEQID & UNIPROT ----
