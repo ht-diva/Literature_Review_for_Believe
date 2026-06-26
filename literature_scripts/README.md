@@ -15,6 +15,7 @@ To add the studies:
 * `pqtl_interval_chris_meta` 
 * `pqtl_sun_ukb_csa`
 * `pqtl_decode_2023` (fore more details on table generation, see [here](https://github.com/ht-diva/Literature_Review_for_Believe/tree/main/literature_files/pqtl_decode_2023))
+* `pqtl_CKB_SomaScan` and `pqtl_CKB_Olink`: formatted column names cf. original Supplementary Table (`HLA.E` to `HLA-E` in `Target_Name`)
 
 run the following command:
 

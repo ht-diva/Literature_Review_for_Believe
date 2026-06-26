@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import logging
 
 from paths import PathManager
@@ -13,6 +14,8 @@ LITERATURE_FILES = pm.get_files()
 SUN_UKB_NONEU = LITERATURE_FILES["pqtl_sun_ukb_csa"]
 INTERVAL_CHRIS_META = LITERATURE_FILES["pqtl_interval_chris_meta"]
 DECODE_2023 = LITERATURE_FILES["pqtl_decode_2023"]
+CKB_SOMASCAN = LITERATURE_FILES["pqtl_CKB_SomaScan"]
+CKB_OLINK = LITERATURE_FILES["pqtl_CKB_Olink"]
 OUTPUT = pm.get_inputs()["literature_table"]
 
 
@@ -134,6 +137,81 @@ with pd.ExcelWriter(OUTPUT) as writer:
             df["COHORT"] = "INTERVAL_CHRIS_META"
             df["TECHNOLOGY"] = "SOMAscan"
             df["pqtlID"] = "__" + df["SeqID"].astype(str) + "__" + df["COHORT"].astype(str)
+
+
+        # CKB SomaScan to literature review format
+        if sheet == "pqtl_Brain":
+            new_sheet = "pqtl_CKB_SomaScan"
+            logging.info(f"=== Processing {[str(new_sheet)]} ===")
+            logging.info(f"Extracting: {new_sheet}")
+
+            df = pd.read_csv(CKB_SOMASCAN, sep=";",
+                             usecols=["SeqID","cis_trans","chr","pos38",
+                                      "EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","P"])
+            df["minuslog10pval"] = np.where(
+                df["P"] > 0,
+                -np.log10(df["P"]),
+                pd.NA
+            )
+            df.drop(columns=["P"], inplace=True)
+            df["pos37"] = pd.NA
+            df["PMID"] = 39984443
+            df["SAMPLE_SIZE"] = 3976
+            df["COHORT"] = "CKB_SOMASCAN"
+            df["TECHNOLOGY"] = "SOMAscan"
+            df["pqtlID"] = (
+                "__" + 
+                df["SeqID"].astype(str) + "_" + 
+                df["PMID"].astype(str) + 
+                df["COHORT"].astype(str)
+            )
+
+
+        # CKB Olink to literature review format
+        if sheet == "pqtl_CSF":
+            new_sheet = "pqtl_CKB_Olink"
+            logging.info(f"=== Processing {[str(new_sheet)]} ===")
+            logging.info(f"Extracting: {new_sheet}")
+
+            # Olink panel
+            olink_panel = pd.read_excel(
+                xls,
+                sheet_name="OLINK",
+                usecols=["Target_Name", "OlinkID", "UniProt"]
+            ).drop_duplicates(subset="Target_Name")
+
+            # Load original table
+            df = pd.read_csv(CKB_OLINK, sep=";",
+                             usecols=["Target_Name","cis_trans","chr","pos38",
+                                      "EFFECT_ALLELE","OTHER_ALLELE","BETA","SE","P"])
+
+            # Add UniProt from panel
+            df = df.merge(olink_panel, on="Target_Name", how="left", validate="many_to_one")
+            missing = df[df["OlinkID"].isna()]
+            print(f"{len(missing)} genes not found in the OLINK panel.")
+            if not missing.empty:
+                print("Missing Target_Name:")
+                print(missing["Target_Name"].drop_duplicates().sort_values().to_list())
+            df.drop(columns=["Target_Name"], inplace=True)
+
+            # Add other missing statistics
+            df["minuslog10pval"] = np.where(
+                df["P"] > 0,
+                -np.log10(df["P"]),
+                pd.NA
+            )
+            df.drop(columns=["P"], inplace=True)
+            df["pos37"] = pd.NA
+            df["PMID"] = 39984443
+            df["SAMPLE_SIZE"] = 3976
+            df["COHORT"] = "CKB_OLINK"
+            df["TECHNOLOGY"] = "Olink"
+            df["pqtlID"] = (
+                "__" + 
+                df["OlinkID"].astype(str) + "_" + 
+                df["PMID"].astype(str) + 
+                df["COHORT"].astype(str)
+            )
 
 
         # Format, sanity check and save new sheets

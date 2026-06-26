@@ -35,6 +35,8 @@ class PathManager:
             'pqtl_sun_ukb_csa' : Path(root_project, literature_files_path, 'sun_ukb_st11.csv'),
             'pqtl_interval_chris_meta' : Path(root_project, literature_files_path, 'interval_chris_meta_st3.csv'),
             'pqtl_decode_2023' : Path(root_project, literature_files_path, 'pqtl_decode_2023/pqtl_decode_2023_leadsnps.csv'),
+            'pqtl_CKB_SomaScan' : Path(root_project, literature_files_path, 'ckb_somascan.csv'),
+            'pqtl_CKB_Olink' : Path(root_project, literature_files_path, 'ckb_olink.csv'),
         }
         self.outputs = {
             'literature_harmonized': Path(root, literature_harmonized_path),
