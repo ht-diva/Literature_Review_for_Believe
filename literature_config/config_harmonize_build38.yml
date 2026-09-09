@@ -4,14 +4,22 @@ n_cores: &cores 4
 
 # This is an ordered dict that contains the order in which the steps are run.
 run_sequence: !!omap
-  - 1: 'basic_check'
-  - 2: 'infer_build'
-  - 3: 'harmonize'
-  - 4: 'sort_alphabetically'
-  - 5: 'write_tsv'
+  - 1: 'fill_data'
+  - 2: 'basic_check'
+  - 3: 'infer_build'
+  - 4: 'harmonize'
+  - 5: 'sort_alphabetically'
+  - 6: 'write_tsv'
 
 
 steps:
+  fill_data: # see https://cloufield.github.io/gwaslab/Conversion/#fill_data
+    params:
+      run: True
+    gl_params:
+      to_fill: ['MLOG10P']
+      overwrite: False
+      extreme: True
   basic_check: # see https://cloufield.github.io/gwaslab/Standardization/
     params:
       run: True

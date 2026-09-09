@@ -112,6 +112,14 @@ with pd.ExcelWriter(OUTPUT) as writer:
             df_raw.to_csv(fname, sep="\t", index=False)
 
 
+        # ---- Re-calculate MLOG10P from GWASLab (pqtl_CKB) ----
+        if cohort in ("pqtl_CKB_SomaScan", "pqtl_CKB_Olink"):
+            df_raw = pd.read_csv(fname, sep="\t")
+            if "minuslog10pval" in df_raw.columns:
+                df_raw.drop(columns="minuslog10pval", inplace=True)
+            df_raw.to_csv(fname, sep="\t", index=False)
+
+
         # ---- RUN GWASPIPE HARMONIZATION ----
         if refgenome == "GRCh37":
             cmd = [
@@ -134,7 +142,8 @@ with pd.ExcelWriter(OUTPUT) as writer:
             ]
             print("Running Harmonization for GRCh38:", " ".join(cmd))
 
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(cmd, check=True)
 
         gz_out = OUTDIR / f"{cohort}.gwaslab.tsv.gz"
         tsv_out = OUTDIR / f"{cohort}.gwaslab.tsv"
