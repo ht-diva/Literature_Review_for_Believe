@@ -9,6 +9,11 @@ literature_files/pqtl_decode_2023/decode_2023_missing.csv
 literature_files/pqtl_decode_2023/decode_2023_stats_mismatch.csv
 literature_files/pqtl_decode_2023/pqtl_decode_2023_leadsnps.csv
 
+# Output folders
+literature_gwasstudio_files/
+literature_harmonized/
+literature_gwasstudio_output/
+
 # Cache
 literature_scripts/scripts/__pycache__
 
