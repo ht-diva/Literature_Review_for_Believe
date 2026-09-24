@@ -4,7 +4,7 @@ channels:
   - bioconda
   - nodefaults
 dependencies:
-  - python=3.11.*
+  - python=3.12.*
   - pip
   - pandas
   - numpy
@@ -14,4 +14,4 @@ dependencies:
   - cloup
   - pysam
   - pip:
-      - git+https://github.com/ht-diva/gwaspipe.git@main
+      - git+https://github.com/ht-diva/gwaspipe.git@d5612c
