@@ -3,12 +3,14 @@ from pathlib import Path
 
 class PathManager:
     def __init__(self):
+        this_file = Path(__file__).resolve()
+        root_project = this_file.parents[2]
         root = Path(
             '/exchange/healthds/pQTL/BELIEVE')
         if not root.exists():
-            exit("Path not found: {}".format(root))
-        this_file = Path(__file__).resolve()
-        root_project = this_file.parents[2]
+            print("Path not found: {}".format(root))
+            print("Using root project: {}".format(root_project))
+            root = root_project
 
         literature_table_path = 'literature_table'
         literature_config_path = 'literature_config'
