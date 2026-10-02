@@ -2,7 +2,10 @@ import pandas as pd
 import logging
 
 from paths import PathManager
-from utils import sanity_check, format_and_dtype, make_panels_mapping
+from utils.sanity_check import sanity_check
+from utils.helper import format_and_dtype
+from utils.uniprot_map import make_panels_mapping
+from utils.missing_ids import plot_missing_ids, report_missing_ids
 
 
 # ---- PATHS ----
@@ -60,12 +63,13 @@ else:
 # ---- READ LITERATURE TABLES ----
 skip_sheets = {"credits", "variant", "protein", "olink", "cohort", "study"}
 xls = pd.ExcelFile(LITERATURE_INPUT)
-uniprot_check_df = []
-uniprot_check_out = LITERATURE_INPUT_DIR / "uniprots_change.tsv"
-missing_seqid_df = []
-missing_seqid_out = LITERATURE_INPUT_DIR / "seqids_missing.tsv"
-missing_uniprot_df = []
-missing_uniprot_out = LITERATURE_INPUT_DIR / "uniprots_missing.tsv"
+harmonized_uniprots_df = []
+harmonized_uniprots_out = LITERATURE_INPUT_DIR / "harmonized_uniprots.tsv"
+harmonized_uniprots_summary_out = LITERATURE_INPUT_DIR / "harmonized_uniprots_summary.tsv"
+missing_ids_df = []
+missing_ids_out = LITERATURE_INPUT_DIR / "missing_ids.tsv"
+missing_ids_summary_out = LITERATURE_INPUT_DIR / "missing_ids_summary.tsv"
+missing_ids_plot_out = LITERATURE_INPUT_DIR / "missing_ids.png"
 
 with pd.ExcelWriter(OUTPUT) as writer:
     for sheet in xls.sheet_names:
@@ -89,7 +93,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # SeqID format check
         # UniProt check against BELIEVE and Literature Protein Panels
         # Find missing SeqID and UniProt against BELIEVE and Literature Protein Panels
-        df = sanity_check(df, cohort, panels_map, uniprot_check_df, missing_seqid_df, missing_uniprot_df)
+        df = sanity_check(df, cohort, panels_map, harmonized_uniprots_df, missing_ids_df)
 
 
         # ---- SAVE ----
@@ -99,59 +103,43 @@ with pd.ExcelWriter(OUTPUT) as writer:
 
 
 
-# ---- SAVE OUTPUTS ----
-logging.info(f"=== Saving outputs ===")
-logging.info(f"> Written cleaned literature table to: {OUTPUT}")
+# ---- REPORT HARMONIZED UNIPROTs ----
+if harmonized_uniprots_df:
 
+    # Save harmonized Uniprots
+    harmonized_uniprots_df = pd.concat(harmonized_uniprots_df, ignore_index=True)
+    harmonized_uniprots_df.to_csv(harmonized_uniprots_out, sep="\t", index=False)
+    logging.info(f"> Written UniProt harmonization table to: {harmonized_uniprots_out}")
 
-# ---- SAVE UNIPROT CHECK ----
-if uniprot_check_df:
-    uniprot_check_df = pd.concat(uniprot_check_df, ignore_index=True)
-    uniprot_check_df.to_csv(uniprot_check_out, sep="\t", index=False)
-    logging.info(f"> Written UniProt correction variant table to: {uniprot_check_out}")
-
-
-# ---- SAVE MISSING SEQIDs ----
-if missing_seqid_df:
-    print("\n=== MISSING SEQIDs ===")
-
-    missing_seqid_df = pd.concat(missing_seqid_df, ignore_index=True)
-    missing_seqid_df = (
-        missing_seqid_df[["COHORT", "SEQID_MISSING", "UNIPROT", "VARIANTS_NR"]]
-        .sort_values(by=["COHORT", "VARIANTS_NR"], ascending=[True, False])
+    # Summary of harmonized Uniprots
+    harmonized_uniprots_summary = (harmonized_uniprots_df[["SEQID", "UNIPROT_RAW", "UNIPROT"]]
+        .drop_duplicates()
+        .sort_values(["SEQID", "UNIPROT_RAW", "UNIPROT"])
+        .reset_index(drop=True)
     )
-    missing_seqid_df.to_csv(missing_seqid_out, sep="\t", index=False)
-    logging.info(f"> Written Missing SEQIDs table to: {missing_seqid_out}")
-
-    summary_df = missing_seqid_df.groupby("COHORT").agg(
-        SEQID_MISSING=("SEQID_MISSING", 'nunique'),
-        VARIANTS_NR=("VARIANTS_NR", 'sum')
-    ).reset_index()
-    missing_seqid_summary_out = str(missing_seqid_out).replace(".tsv","_summary.tsv")
-    summary_df.to_csv(missing_seqid_summary_out, sep="\t", index=False)
-    logging.info(f"> Written Missing SEQIDs summary to: {missing_seqid_summary_out}")
-
-    print(summary_df)
+    harmonized_uniprots_summary.to_csv(harmonized_uniprots_summary_out, sep="\t", index=False)
 
 
-# ---- SAVE MISSING UNIPROTs ----
-if missing_uniprot_df:
-    print("\n=== MISSING UNIPROTs ===")
+# ---- REPORT MISSING IDs ----
+if missing_ids_df:
 
-    missing_uniprot_df = pd.concat(missing_uniprot_df, ignore_index=True)
-    missing_uniprot_df = (
-        missing_uniprot_df[["COHORT", "UNIPROT_MISSING", "SEQID", "VARIANTS_NR"]]
-        .sort_values(by=["COHORT", "VARIANTS_NR"], ascending=[True, False])
+    # Save missing IDs
+    missing_ids_df = pd.concat(missing_ids_df, ignore_index=True)
+    missing_ids_df = missing_ids_df.sort_values(
+        by=["COHORT", "PANEL", "VARIANT_NR"],
+        ascending=[True, True, False],
     )
-    missing_uniprot_df.to_csv(missing_uniprot_out, sep="\t", index=False)
-    logging.info(f"> Written Missing UniProts table to: {missing_uniprot_out}")
+    missing_ids_df.to_csv(missing_ids_out, sep="\t", index=False)
+    logging.info(f"> Written Missing SeqIDs & UniProts table to: {missing_ids_out}")
 
-    summary_df = missing_uniprot_df.groupby("COHORT").agg(
-        UNIPROT_MISSING=("UNIPROT_MISSING", 'nunique'),
-        VARIANTS_NR=("VARIANTS_NR", 'sum')
-    ).reset_index()
-    missing_uniprot_summary_out = str(missing_uniprot_out).replace(".tsv","_summary.tsv")
-    summary_df.to_csv(missing_uniprot_summary_out, sep="\t", index=False)
-    logging.info(f"> Written Missing UniProts summary to: {missing_uniprot_summary_out}")
 
-    print(summary_df)
+    # Reports for missing IDs
+    missing_summary_df = report_missing_ids(missing_ids_df)
+    missing_summary_df.to_csv(missing_ids_summary_out, sep="\t", index=False)
+    logging.info(f"> Written missing identifier summary to: {missing_ids_summary_out}")
+
+    print("\n=== MISSING IDENTIFIERS ===")
+    print(missing_summary_df)
+
+    # Plot missing IDs
+    plot_missing_ids(missing_summary_df, missing_ids_plot_out)
