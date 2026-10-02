@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from ruamel.yaml import YAML
 from paths import PathManager
-from utils import save_last_commit_id_to_file, make_variant_key
+from utils.git import save_last_commit_id_to_file
 
 
 # ---- PATHS & CONFIG ----

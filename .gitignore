@@ -15,6 +15,6 @@ literature_harmonized/
 literature_gwasstudio_output/
 
 # Cache
-literature_scripts/scripts/__pycache__
+__pycache__/
 
 .DS_Store

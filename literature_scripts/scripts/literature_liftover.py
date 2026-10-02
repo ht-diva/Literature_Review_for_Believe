@@ -6,7 +6,7 @@ import pysam
 import gzip
 
 from paths import PathManager
-from utils import write_vcf
+from utils.vcf import write_vcf
 
 
 # ---- PATHS ----

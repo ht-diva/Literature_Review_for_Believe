@@ -3,7 +3,7 @@ import numpy as np
 import logging
 
 from paths import PathManager
-from utils import format_and_dtype
+from utils.helper import format_and_dtype
 
 
 # ---- PATHS ----
