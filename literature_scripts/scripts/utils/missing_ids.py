@@ -1,5 +1,9 @@
 import pandas as pd
 import logging
+import matplotlib.pyplot as plt
+import numpy as np
+
+from matplotlib.patches import Patch
 
 
 # ---- MISSING SEQIDs & UNIPROTs FUNCTIONS ----
@@ -7,6 +11,15 @@ import logging
 
 # Check missing SeqIDs and UniProts against BELIEVE and Literature Protein Panels
 def missing_seqid_uniprot(df, cohort, panels_map, missing_ids_df):
+
+    # Check for both raw and harmonized datasets
+    column_aliases = {}
+    if "SeqID" not in df.columns and "SEQID" in df.columns:
+        column_aliases["SEQID"] = "SeqID"
+    if "UniProt" not in df.columns and "UNIPROT" in df.columns:
+        column_aliases["UNIPROT"] = "UniProt"
+    df = df.rename(columns=column_aliases)
+
 
     # SomaScan Panel
     if not df["SeqID"].dropna().empty:
@@ -25,7 +38,7 @@ def missing_seqid_uniprot(df, cohort, panels_map, missing_ids_df):
          # If any missing SeqIDs...
         if missing_seqids_nr > 0:
             logging.info(
-                f"> Missing SeqIDs: {missing_seqids_nr} out of {len(set(df.SeqID))}."
+                f"> {cohort}: Missing SeqIDs: {missing_seqids_nr} out of {len(set(df.SeqID))}."
                 f" Variants affected: {missing_seqids_var_nr} out of {len(df)}."
             )
 
@@ -34,8 +47,8 @@ def missing_seqid_uniprot(df, cohort, panels_map, missing_ids_df):
                 seqid_df[["COHORT", "SeqID", "UniProt"]]
                 .groupby(["COHORT", "SeqID"])
                 .agg(
-                    VARIANT_NR=('SeqID', 'size'),
-                    UNIPROT=('UniProt', lambda x: ', '.join(x.unique()))
+                    VARIANT_NR=("SeqID", "size"),
+                    UNIPROT=("UniProt", lambda x: ", ".join(x.dropna().astype(str).unique()))
                 )
                 .reset_index()
             )
@@ -58,11 +71,12 @@ def missing_seqid_uniprot(df, cohort, panels_map, missing_ids_df):
             missing_ids_df.append(seqid_summary)
 
         else:
-            logging.info("> No Missing SeqID.")
+            logging.info(f"> {cohort}: No Missing SeqID.")
 
 
     # Olink Panel
     else:
+
 
         # ---- CHECK MISSING UNIPROT ----
 
@@ -77,7 +91,7 @@ def missing_seqid_uniprot(df, cohort, panels_map, missing_ids_df):
         # If any missing UniProts...
         if missing_uniprots_nr > 0:
             logging.info(
-                f"> Missing UniProts: {missing_uniprots_nr} out of {len(set(df.UniProt))}."
+                f"> {cohort}: Missing UniProts: {missing_uniprots_nr} out of {len(set(df.UniProt))}."
                 f" Variants affected: {missing_uniprots_var_nr} out of {len(df)}."
             )
 
@@ -111,7 +125,7 @@ def missing_seqid_uniprot(df, cohort, panels_map, missing_ids_df):
             missing_ids_df.append(uniprot_summary)
 
         else:
-            logging.info("> No Missing UniProt.")
+            logging.info(f"> {cohort}: No Missing UniProt.")
 
 
 # Report missing SeqIDs and UniProts
@@ -130,10 +144,7 @@ def report_missing_ids(missing_ids_df):
 
     missing_summary_df = (
         missing_ids_df.loc[missing_ids_df["ID_MISSING"].eq(missing_ids_df["ID_TYPE"])]
-        .groupby(
-            ["COHORT", "PANEL", "ID_TYPE"],
-            as_index=False,
-        )
+        .groupby(["COHORT", "PANEL", "ID_TYPE"], as_index=False)
         .agg(
             ID_MISSING=("MISSING_ID_VALUE", "nunique"),
             ID_MISSING_VARS=("VARIANT_NR", "sum"),
@@ -152,10 +163,6 @@ def report_missing_ids(missing_ids_df):
 # Plot  missing SeqIDs and UniProts
 def plot_missing_ids(missing_summary_df, output_path):
 
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Patch
-    import numpy as np
-
     # Calculate percentage of variants affected by missing identifiers
     missing_summary_df["MISSING_ID_VARS_PCT"] = np.where(
         missing_summary_df["TOTAL_VARS"].gt(0),
@@ -168,8 +175,8 @@ def plot_missing_ids(missing_summary_df, output_path):
 
     # Plot settings
     panel_colors = {
-        "SomaScan": "#4C78A8",
-        "Olink": "#F58518",
+        "SomaScan": "#225D65",
+        "Olink": "#D39932",
     }
     bar_colors = plot_df["PANEL"].map(panel_colors).fillna("#A0A0A0")
     fig, ax = plt.subplots(figsize=(14, 6))
@@ -211,3 +218,4 @@ def plot_missing_ids(missing_summary_df, output_path):
     # Save plot
     fig.tight_layout()
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)

@@ -1,5 +1,6 @@
 import pandas as pd
 import logging
+import re
 
 
 # ---- HELPER FUNCTIONS ----
@@ -133,3 +134,26 @@ def best_id_match(believe_metadata, literature_panel):
         logging.info(f"> All matched by {best_match}.")
 
     return best_match
+
+
+# Helper function to extract number for log lines
+def extract_removed_number(line, description):
+
+    number_pattern = r"(?P<value>\d[\d,]*(?:\.\d+)?)"
+
+    description = re.escape(description)
+    patterns = [
+        # Removed 10 variants with bad statistics...
+        rf"removed\s+{number_pattern}\s+{description}",
+
+        # Raw matching rate: 99.5%
+        # Removed variants with NA alleles or ...: 11
+        rf"{description}[^:\n]*:\s*{number_pattern}\s*%?",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, line, flags=re.IGNORECASE)
+        if match:
+            return float(match.group("value").replace(",", ""))
+
+    return None

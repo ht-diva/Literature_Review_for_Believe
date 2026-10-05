@@ -4,11 +4,15 @@ import subprocess
 import pandas as pd
 import numpy as np
 import re
+import logging
 
 from pathlib import Path
 from ruamel.yaml import YAML
 from paths import PathManager
 from utils.git import save_last_commit_id_to_file
+from utils.helper import extract_removed_number
+from utils.missing_ids import missing_seqid_uniprot, plot_missing_ids, report_missing_ids
+from utils.variant_loss import check_variant_loss, plot_variant_loss
 
 
 # ---- PATHS & CONFIG ----
@@ -19,11 +23,27 @@ CONFIGS = pm.get_config()
 CONFIG_HARMONIZE_BUILD38 = CONFIGS["config_harmonize_build38"]
 CONFIG_HARMONIZE_BUILD37 = CONFIGS["config_harmonize_build37"]
 METADATA = CONFIGS["believe_metadata"]
-FORMAT = "literature_rev"
-SEP = "\t"
+PANELS_MAP = pm.get_config()["panels_map"]
 OUTDIR = pm.get_output("literature_harmonized", exists=False)
 OUTDIR.mkdir(parents=True, exist_ok=True)
 OUTPUT = pm.get_inputs()["literature_table_harmonized"]
+
+FORMAT = "literature_rev"
+SEP = "\t"
+
+
+# ---- LOGGING ----
+log_file = OUTDIR / "literature_harmonized.log"
+logging.basicConfig(
+    filename=log_file,
+    filemode="w",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+
+
+# ---- MAP BELIEVE & LITERATURE PANELS ----
+panels_map = pd.read_csv(PANELS_MAP, sep="\t")
 
 
 # ---- HELPER FUNCTIONS ----
@@ -63,6 +83,9 @@ print(f"INPUT: {LITERATURE_INPUT}")
 studies = pd.read_excel(xls, sheet_name="STUDY")
 pqtl_studies = "pqtl_" + studies["StudyNAME"].str.lower()
 summary_rows = []
+missing_ids_df = []
+missing_ids_plot_out = OUTDIR / "missing_ids.png"
+variant_loss_plot_out = OUTDIR / "variant_loss.png"
 
 with pd.ExcelWriter(OUTPUT) as writer:
     for sheet in xls.sheet_names:
@@ -142,8 +165,8 @@ with pd.ExcelWriter(OUTPUT) as writer:
             ]
             print("Running Harmonization for GRCh38:", " ".join(cmd))
 
-        #subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #subprocess.run(cmd, check=True)
 
         gz_out = OUTDIR / f"{cohort}.gwaslab.tsv.gz"
         tsv_out = OUTDIR / f"{cohort}.gwaslab.tsv"
@@ -158,20 +181,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # ---- COUNT VARIANT LOSS (TOTAL) ----
         n_raw = len(df_raw)
         n_harm = len(df_harm)
-        loss = n_raw - n_harm
-
-
-        # ---- REMOVE D-I ALLELES ----
-        di_mask = (df_harm["EA"].isin(["D", "I"])) | (df_harm["NEA"].isin(["D", "I"]))
-        print(f"D-I allele removal: {di_mask.sum()}")
-        df_harm = df_harm.loc[~di_mask]
-        df_harm.reset_index(drop=True, inplace=True)
-
-
-        # ---- COUNT VARIANT LOSS FROM D-I REMOVAL ----
-        n_harm_di = n_harm
-        n_harm = len(df_harm)
-        loss_di = n_harm_di - n_harm
+        loss_tot = n_raw - n_harm
 
 
         # ---- BACK-UP SE (pqtl_QMDiab) ----
@@ -198,36 +208,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
             df_harm.drop(columns=["pqtlID", "chr", "pos38", "MLOG10P_orig"], inplace=True)
 
 
-        # ---- CHECK SEQID & UNIPROT ----
-        believe_metadata = pd.read_csv(METADATA, sep="\t")
-        believe_metadata = believe_metadata.rename(columns={"notes_source_id": "SEQID"})
-
-        harm_seqids = df_harm["SEQID"].dropna()
-        if not harm_seqids.empty:
-            harm_seqids = set(harm_seqids)
-
-            # Find not-matching SEQIDs
-            believe_seqids = set(believe_metadata["SEQID"].dropna())
-            non_matching = [s for s in harm_seqids if s not in believe_seqids]
-            if non_matching:
-                print(
-                    f"WARNING {cohort}: {len(non_matching)} SEQIDs not found. "
-                    f"SEQIDs not found: {non_matching[:10]}"
-                )
-
-            # Check UniProt consistency for matched SEQIDs
-            believe_metadata["trait_protein_ids"] = believe_metadata["trait_protein_ids"].str.strip().str.upper()
-            df_harm["UNIPROT"] = df_harm["UNIPROT"].str.strip().str.upper()
-            merged = believe_metadata.merge(df_harm, on="SEQID", how="inner")
-            uniprot_mismatch = merged[merged["trait_protein_ids"] != merged["UNIPROT"]][["SEQID", "trait_protein_ids", "UNIPROT"]].drop_duplicates()
-            if not uniprot_mismatch.empty:
-                print(
-                    f"WARNING {cohort}: {len(uniprot_mismatch)} SEQIDs with UNIPROT mismatches. "
-                    f"SEQIDs with UNIPROT mismatches: {uniprot_mismatch}"
-                )
-
-
-        # ---- SAVE ----
+        # ---- SAVE TSV ----
         df_harm = df_harm.drop_duplicates().reset_index(drop=True)
         df_harm.to_csv(tsv_out, sep="\t", index=False)
         print(f"Saving: {tsv_out}")
@@ -238,7 +219,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         df_harm.to_excel(writer, sheet_name=sheet, index=False)
 
 
-        # ---- CHECK: EMPTY POS ----
+        # ---- CHECK: EMPTY POS37 ----
         pos_nans = df_harm["POS"].isna().sum() if "POS" in df_harm.columns else np.nan
         if pos_nans > 0:
             pos37_vals = df_harm.loc[df_harm["POS"].isna(), "POS37"].dropna().unique()
@@ -248,19 +229,12 @@ with pd.ExcelWriter(OUTPUT) as writer:
             )
 
 
-        # ---- COUNT MULTI-ALLELIC SNPS/LOCI ----
-        multiallelic_snps_mask = df_harm.groupby(["CHR", "POS"])["SNPID"].transform("nunique").gt(1)
-        nr_multiallelic_snps = multiallelic_snps_mask.sum()
-        nr_multiallelic_loci = df_harm.groupby(["CHR", "POS"])["SNPID"].nunique().gt(1).sum()
-        if nr_multiallelic_snps > 0:
-            multiallelic_snps_df = df_harm[multiallelic_snps_mask][["PQTLID", "SEQID", "UNIPROT", "SNPID"]]
-            multiallelic_snps_df = multiallelic_snps_df.drop_duplicates().reset_index(drop=True)
-            nr_multiallelic_snps = len(multiallelic_snps_df)
+        # ---- EXTRACT HARMONIZATION INFO ----
 
-
-        # ---- EXTRACT LOG INFO ----
-
-        # Log information
+        # Extract log information
+        loss_badalleles = None
+        loss_badstats = None
+        liftover_unmapped = None
         ref_match_log = None
         ref_strand_flip_log = None
         palindromic_snps_log = None
@@ -271,26 +245,46 @@ with pd.ExcelWriter(OUTPUT) as writer:
         with log_out.open("r") as fp:
             for line in fp:
                 line = timestamp_pat.sub("", line).strip()
-                if "raw matching rate" in line.lower():
-                    ref_match_log = float(line.split(":")[-1].strip().rstrip("%"))
-                if "variants flipped" in line.lower():
-                    ref_strand_flip_log = int(line.split(":")[-1].strip())
-                if "both allele on genome + unable to distinguish" in line.lower():
-                    palindromic_snps_log = int(line.split(":")[-1].strip())
 
+                value = extract_removed_number(line, "removed variants with na alleles")
+                if value is not None and loss_badalleles is None:
+                    loss_badalleles = value
+                value = extract_removed_number(line, "variants with bad statistics in total")
+                if value is not None and loss_badstats is None:
+                    loss_badstats = value
+                value = extract_removed_number(line, "unmapped variants")
+                if value is not None:
+                    liftover_unmapped = value
+                value = extract_removed_number(line, "raw matching rate")
+                if value is not None:
+                    ref_match_log = value
+                value = extract_removed_number(line, "variants flipped")
+                if value is not None:
+                    ref_strand_flip_log = value
+                value = extract_removed_number(line, "both allele on genome + unable to distinguish")
+                if value is not None:
+                    palindromic_snps_log = value
+
+        # Count multi-allelic variants
+        multiallelic_snps_mask = df_harm.groupby(["CHR", "POS"])["SNPID"].transform("nunique").gt(1)
+        nr_multiallelic_snps = multiallelic_snps_mask.sum()
+
+        # Report missing IDs after harmonization
+        missing_seqid_uniprot(df_harm, cohort, panels_map, missing_ids_df)
 
         # ---- SUMMARY ----
         summary_rows.append([
             cohort,
             n_raw,
             n_harm,
-            loss,
-            loss_di,
+            loss_tot,
+            loss_badalleles,
+            loss_badstats,
+            liftover_unmapped,
             ref_match_log,
             ref_strand_flip_log,
             palindromic_snps_log,
-            nr_multiallelic_snps,
-            nr_multiallelic_loci
+            nr_multiallelic_snps
         ])
 
 
@@ -305,24 +299,39 @@ tmp_harmonize_build38_config.unlink(missing_ok=True)
 tmp_harmonize_build37_config.unlink(missing_ok=True)
 
 
-# ---- SAVE SUMMARY ----
+# ---- REPORT MISSING IDs ----
+if missing_ids_df:
+    missing_ids_df = pd.concat(missing_ids_df, ignore_index=True)
+    missing_ids_df = missing_ids_df.sort_values(
+        by=["COHORT", "PANEL", "VARIANT_NR"],
+        ascending=[True, True, False],
+    )
+    missing_summary_df = report_missing_ids(missing_ids_df)
+    plot_missing_ids(missing_summary_df, missing_ids_plot_out)
+
+
+# ---- SAVE HARMONIZATION SUMMARY ----
 summary_df = pd.DataFrame(
     summary_rows,
     columns=[
         "COHORT",
-        "VARIANT_NR_RAW",
-        "VARIANT_NR_HARM",
-        "VARIANT_LOSS_TOTAL",
-        "VARIANT_LOSS_DI",
+        "VARIANTS_RAW",
+        "VARIANTS_HARM",
+        "VARIANTS_LOSS_TOTAL",
+        "VARIANTS_LOSS_BADALLELES",
+        "VARIANTS_LOSS_BADSTATS",
+        "VARIANTS_LIFTOVER_UNMAPPED",
         "REF_MATCH",
         "REF_FLIP_VARIANT_NR",
         "REF_PALINDROMIC_NR",
-        "MULTI-ALLELIC_SNPS",
-        "MULTI-ALLELIC_LOCI"
+        "VARIANTS_MULTIALLELIC"
     ]
 )
 summary_df.to_csv(OUTDIR / "harmonization_summary.tsv", sep="\t", index=False)
-print("\n=== DONE ===")
-print(summary_df)
+
+# ---- REPORT VARIANT LOSS ----
+check_variant_loss(summary_df)
+plot_variant_loss(summary_df, variant_loss_plot_out)
 
 save_last_commit_id_to_file(OUTDIR / "release.txt")
+print("\n=== DONE ===")
