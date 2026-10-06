@@ -1,7 +1,9 @@
 CONDA_ENV_DIR := $(shell dirname $(CONDA_EXE))
 CONDA_ENV_NAME := literature_harmonization
 
-TARGETS := dependencies add_studies liftover clean_table harmonization gwasstudio_files
+LIFTOVER_KEY ?= default
+
+TARGETS := dependencies add_studies clean_table liftover_bcftools liftover_test harmonization gwasstudio_files
 
 all:
 	@echo "Available targets: $(TARGETS)"
@@ -11,25 +13,33 @@ dependencies:
 
 dependencies-force:
 	conda env update --file environment.yml --prune
-	@echo "Forcing pip reinstall of gwaspipe..."
-	pip install --force-reinstall --no-cache-dir \
-	git+https://github.com/ht-diva/gwaspipe.git@main
+	@echo "Forcing reinstall of gwaspipe from main..."
+	conda run --no-capture-output -n "$(CONDA_ENV_NAME)" \
+		python -m pip install --force-reinstall --no-cache-dir --no-deps \
+		"git+https://github.com/ht-diva/gwaspipe.git@main"
 
 add_studies:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
 	python scripts/add_studies.py
 
-liftover:
+liftover_bcftools:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
-	python scripts/literature_liftover.py
+	python scripts/literature_liftover_bcftools.py
+
+liftover_test:
+	$(MAKE) harmonization LIFTOVER_KEY=bcftools
+	$(MAKE) liftover_bcftools
+	$(MAKE) harmonization LIFTOVER_KEY=gwaslab_standard
+	$(MAKE) harmonization LIFTOVER_KEY=gwaslab_bridge
+	python liftover_comparison.py
 
 clean_table:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
 	python scripts/clean_literature_table.py
 
 harmonization:
-	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
-	python scripts/literature_harmonization.py
+	source "$(CONDA_ENV_DIR)/activate" "$(CONDA_ENV_NAME)" && \
+	LIFTOVER_KEY="$(LIFTOVER_KEY)" python scripts/literature_harmonization.py
 
 gwasstudio_files:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
@@ -39,4 +49,4 @@ combine_output:
 	source $(CONDA_ENV_DIR)/activate $(CONDA_ENV_NAME) && \
 	python scripts/combine_output.py
 
-.PHONY: all dependencies add_studies liftover clean_table harmonization gwasstudio_files
+.PHONY: all dependencies add_studies clean_table liftover_bcftools liftover_test harmonization gwasstudio_files

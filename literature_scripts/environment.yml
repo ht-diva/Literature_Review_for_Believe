@@ -14,4 +14,4 @@ dependencies:
   - cloup
   - pysam
   - pip:
-      - git+https://github.com/ht-diva/gwaspipe.git@d5612c
+      - git+https://github.com/ht-diva/gwaspipe.git@main

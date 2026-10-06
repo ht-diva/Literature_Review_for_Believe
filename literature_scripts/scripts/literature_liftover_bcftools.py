@@ -4,18 +4,21 @@ import logging
 import subprocess
 import pysam
 import gzip
+import re
 
+from pathlib import Path
 from paths import PathManager
 from utils.vcf import write_vcf
+from utils.variant_loss import plot_variant_loss
 
 
 # ---- PATHS ----
 pm = PathManager()
-LITERATURE_INPUT = pm.get_inputs()["literature_table_harmonized"]
-OUTPUT = pm.get_inputs()["literature_table_liftover"]
+LITERATURE_INPUT = pm.get_outputs()["literature_table_harmonized_bcftools"]
+OUTPUT = pm.get_outputs()["literature_table_liftover_bcftools"]
 OUTDIR = OUTPUT.parent
-OUTDIR.mkdir(parents=True, exist_ok=True)
-OUTDIR_HARM = pm.get_output("literature_harmonized", exists=False)
+HARM_SUMMARY = OUTDIR / "harmonization_summary.tsv"
+variant_loss_plot_out =  OUTDIR / "variant_loss.png"
 singularity_image = "/ssu/gassu/singularity/bcftools_latest.sif"
 
 
@@ -72,7 +75,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         liftover_vcf = OUTDIR / f"{stem}.liftover.vcf"
         liftover_sorted = OUTDIR / f"{stem}.liftover.vcf.gz"
         fixref_vcf = OUTDIR / f"{stem}.liftover.fixref.vcf.gz"
-        log_file = OUTDIR_HARM / f"{stem}.liftover.log"
+        log_file = OUTDIR / f"{stem}.liftover.log"
 
 
         # ---- GRCh38: CHECK REF-CONSISTENCY ONLY ----
@@ -281,9 +284,32 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # Save the liftovered formatted file
         merged_df.to_excel(writer, sheet_name=sheet, index=False)
 
-        # Update harmonized files for GWASStudio file built
-        tsv_out = OUTDIR_HARM / f"{cohort}.gwaslab.tsv"
+        # Save liftovered harmonized files
+        tsv_out = OUTDIR / f"{cohort}.gwaslab.liftover.tsv"
         merged_df.to_csv(tsv_out, sep="\t", index=False)
+
+
+        # ---- UPDATE UNMAPPED VARIANTS ----
+
+        # Extract unmapped variants from bcftools log file
+        unmapped_variants = pd.NA
+        pattern = re.compile(
+            r"^Lines\s+total/swapped/reference added/rejected:\s*"
+            r"\d+/\d+/\d+/(\d+)\s*$"
+        )
+        with Path(log_file).open() as log:
+            for line in log:
+                match = pattern.search(line)
+                if match:
+                    unmapped_variants = int(match.group(1))
+
+        # Update harmonization summary
+        summary_df = pd.read_csv(HARM_SUMMARY, sep="\t")
+        summary_df.loc[summary_df["COHORT"].eq(cohort), "VARIANTS_LIFTOVER_UNMAPPED"] = unmapped_variants
+        summary_df.to_csv(HARM_SUMMARY, sep="\t", index=False)
+
+        # Plot variant loss
+        plot_variant_loss(summary_df, variant_loss_plot_out)
 
 
         # ---- CLEAN ----

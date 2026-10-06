@@ -7,8 +7,8 @@ class PathManager:
         root_project = this_file.parents[2]
         root = Path(
             '/exchange/healthds/pQTL/BELIEVE')
-        if not root.exists():
-            print("Path not found: {}".format(root))
+        if root_project.parent != root:
+            print(f"Project is outside {root}; using {root_project}")
             print("Using root project: {}".format(root_project))
             root = root_project
 
@@ -22,13 +22,15 @@ class PathManager:
         self.inputs = {
             'literature_table_raw' : Path(root_project, literature_table_path, 'literature_table_all_somalogic.xlsx'),
             'literature_table' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_allstudies.xlsx'),
-            'literature_table_liftover' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_liftover.xlsx'),
             'literature_table_cleaned' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_cleaned.xlsx'),
             'literature_table_harmonized' : Path(root_project, literature_table_path, 'literature_table_all_somalogic_harmonized.xlsx'),
         }
         self.config = {
             'config_harmonize_build38' : Path(root_project, literature_config_path, 'config_harmonize_build38.yml'),
             'config_harmonize_build37' : Path(root_project, literature_config_path, 'config_harmonize_build37.yml'),
+            'config_harmonize_build37_bcftools' : Path(root_project, literature_config_path, 'liftover_test/config_harmonize_build37_bcftools.yml'),
+            'config_harmonize_build37_gwaslab_bridge' : Path(root_project, literature_config_path, 'liftover_test/config_harmonize_build37_gwaslab_bridge.yml'),
+            'config_harmonize_build37_gwaslab_standard' : Path(root_project, literature_config_path, 'liftover_test/config_harmonize_build37_gwaslab_standard.yml'),
             'believe_metadata' : Path(root_project, literature_config_path, 'believe_metadata.tsv'),
             'literature_panel' : Path(root_project, literature_config_path, 'literature_protein_panel.tsv'),
             'panels_map' : Path(root_project, literature_config_path, 'believe_literature_panels_map.tsv'),
@@ -44,6 +46,12 @@ class PathManager:
             'literature_harmonized': Path(root, literature_harmonized_path),
             'literature_gwasstudio_files': Path(root, literature_gwasstudio_files_path),
             'literature_gwasstudio_output': Path(root, literature_gwasstudio_output_path),
+            
+            # Liftover test outputs
+            'literature_table_harmonized_bcftools' : Path(root, literature_harmonized_path, 'liftover_test/bcftools/literature_table_all_somalogic_harmonized.xlsx'),
+            'literature_table_liftover_bcftools' : Path(root, literature_harmonized_path, 'liftover_test/bcftools/literature_table_all_somalogic_liftover.xlsx'),
+            'literature_table_harmonized_gwaslab_bridge' : Path(root, literature_harmonized_path, 'liftover_test/gwaslab_bridge/literature_table_all_somalogic_harmonized.xlsx'),
+            'literature_table_harmonized_gwaslab_standard' : Path(root, literature_harmonized_path, 'liftover_test/gwaslab_standard/literature_table_all_somalogic_harmonized.xlsx'),
         }
 
     def get_inputs(self):

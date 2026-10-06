@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import re
 import logging
+import os
 
 from pathlib import Path
 from ruamel.yaml import YAML
@@ -30,6 +31,25 @@ OUTPUT = pm.get_inputs()["literature_table_harmonized"]
 
 FORMAT = "literature_rev"
 SEP = "\t"
+
+
+# ---- SELECT LIFTOVER CONFIG and OUTPUT (liftover_test) ----
+
+liftover_key = os.environ.get("LIFTOVER_KEY", "default")
+allowed_keys = {
+    "default",
+    "bcftools",
+    "gwaslab_standard",
+    "gwaslab_bridge",
+}
+if liftover_key not in allowed_keys:
+    raise ValueError(f"Unknown liftover config: {liftover_key}")
+
+if liftover_key != "default":
+    CONFIG_HARMONIZE_BUILD37 = CONFIGS[f"config_harmonize_build37_{liftover_key}"]
+    OUTPUT = pm.get_outputs()[f"literature_table_harmonized_{liftover_key}"]
+    OUTDIR = OUTPUT.parent
+    OUTDIR.mkdir(parents=True, exist_ok=True)
 
 
 # ---- LOGGING ----
@@ -104,6 +124,11 @@ with pd.ExcelWriter(OUTPUT) as writer:
         # ---- REFERENCE GENOME ----
         refgenome = studies.loc[pqtl_studies == sheet.lower(), "ReferenceGenome"].item()
         print(f"{sheet} Reference Genome: {refgenome}")
+
+        # In case of liftover_test, we process only GRCh37
+        if liftover_key != "default" and refgenome != "GRCh37":
+            print(f"Skip liftover test for {sheet}")
+            continue
 
         # For GRCh37, swap positions (37 <-> 38):
         # For strand alignment with ref. GRCh37, POS is the target (mapped from pos38 in harmonization)

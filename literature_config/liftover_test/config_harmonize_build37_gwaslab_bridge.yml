@@ -1,7 +1,7 @@
 ---
 # common parameters
 n_cores: &cores 4
-genome_assembly: GRCh38
+genome_assembly: GRCh37
 reference_resources:
   hapmap3_coordinates: "GWASLab 4.0.2 bundled HapMap3 tables"
 assembly_validation:
@@ -11,9 +11,9 @@ assembly_validation:
 
 # This is an ordered dict that contains the order in which the steps are run.
 run_sequence: !!omap
-  - 1: 'fill_data'
-  - 2: 'basic_check'
-  - 3: 'infer_build'
+  - 1: 'basic_check'
+  - 2: 'infer_build'
+  - 3: 'liftover'
   - 4: 'harmonize'
   - 5: 'basic_check'
   - 6: 'sort_alphabetically'
@@ -21,13 +21,6 @@ run_sequence: !!omap
 
 
 steps:
-  fill_data: # see https://cloufield.github.io/gwaslab/Conversion/#fill_data
-    params:
-      run: True
-    gl_params:
-      to_fill: ['MLOG10P']
-      overwrite: False
-      extreme: True
   basic_check: # see https://cloufield.github.io/gwaslab/Standardization/
     params:
       run: True
@@ -42,13 +35,21 @@ steps:
   infer_build: # see https://cloufield.github.io/gwaslab/InferBuild/
     params:
       run: True
+  liftover: # see https://cloufield.github.io/gwaslab/LiftOver/
+    params:
+      run: True
+    gl_params:
+      from_build: "19"
+      to_build: "38"
+      chain_path: "/group/diangelantonio/public_data/liftOver/hg19ToHg38.chainBridge.over.chain.gz" #bridge chain
+      remove: False
   harmonize: # see https://cloufield.github.io/gwaslab/Harmonization/
     params:
       run: True
     gl_params:
       basic_check: False
-      #ref_seq: "/group/diangelantonio/public_data/liftOver/hg38.nochr.fa"
-      #ref_rsid_vcf: "/group/diangelantonio/public_data/liftOver/All_20180418.vcf.gz"
+      ref_seq: "/group/diangelantonio/public_data/liftOver/human_g1k_v37.fasta"
+      ref_rsid_vcf: "/group/diangelantonio/public_data/liftOver/All_20180423.vcf.gz"
       threads: *cores
   sort_alphabetically:
     params:

@@ -40,19 +40,12 @@ def check_variant_loss(summary_df):
 # Function to plot variant loss during harmonization
 def plot_variant_loss(summary_df, output_path):
 
+    # Calculate percentages for each removal reason
     loss_columns = {
         "VARIANTS_LOSS_BADALLELES": "Bad alleles",
         "VARIANTS_LOSS_BADSTATS": "Bad statistics",
         "VARIANTS_LIFTOVER_UNMAPPED": "Liftover unmapped",
     }
-
-    loss_colors = {
-        "Bad alleles": "#225D65",
-        "Bad statistics": "#D39932",
-        "Liftover unmapped": "#AE5238",
-    }
-
-    # Calculate percentages for each removal reason
     plot_df = summary_df.copy()
     for source_column, label in loss_columns.items():
         plot_df[label] = (
@@ -78,6 +71,15 @@ def plot_variant_loss(summary_df, output_path):
     )
 
     # Plot settings
+    acadia = [
+        "#A4BED5",
+        "#FED789",
+        "#72874E",
+        "#023743",
+        "#476F84",
+        "#453947",
+    ]
+    loss_colors = dict(zip(["Bad alleles", "Bad statistics", "Liftover unmapped"], acadia[:3]))
     fig, ax = plt.subplots(figsize=(14, 6))
     x_positions = np.arange(len(plot_df))
     bar_bottom = np.zeros(len(plot_df))

@@ -1,7 +1,7 @@
 ---
 # common parameters
 n_cores: &cores 4
-genome_assembly: GRCh38
+genome_assembly: GRCh37
 reference_resources:
   hapmap3_coordinates: "GWASLab 4.0.2 bundled HapMap3 tables"
 assembly_validation:
@@ -11,23 +11,15 @@ assembly_validation:
 
 # This is an ordered dict that contains the order in which the steps are run.
 run_sequence: !!omap
-  - 1: 'fill_data'
-  - 2: 'basic_check'
-  - 3: 'infer_build'
-  - 4: 'harmonize'
-  - 5: 'basic_check'
-  - 6: 'sort_alphabetically'
-  - 7: 'write_tsv'
+  - 1: 'basic_check'
+  - 2: 'infer_build'
+  - 3: 'harmonize'
+  - 4: 'basic_check'
+  - 5: 'sort_alphabetically'
+  - 6: 'write_tsv'
 
 
 steps:
-  fill_data: # see https://cloufield.github.io/gwaslab/Conversion/#fill_data
-    params:
-      run: True
-    gl_params:
-      to_fill: ['MLOG10P']
-      overwrite: False
-      extreme: True
   basic_check: # see https://cloufield.github.io/gwaslab/Standardization/
     params:
       run: True
@@ -47,8 +39,8 @@ steps:
       run: True
     gl_params:
       basic_check: False
-      #ref_seq: "/group/diangelantonio/public_data/liftOver/hg38.nochr.fa"
-      #ref_rsid_vcf: "/group/diangelantonio/public_data/liftOver/All_20180418.vcf.gz"
+      ref_seq: "/group/diangelantonio/public_data/liftOver/human_g1k_v37.fasta"
+      ref_rsid_vcf: "/group/diangelantonio/public_data/liftOver/All_20180423.vcf.gz"
       threads: *cores
   sort_alphabetically:
     params:

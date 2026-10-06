@@ -174,10 +174,15 @@ def plot_missing_ids(missing_summary_df, output_path):
     plot_df = missing_summary_df.sort_values("MISSING_ID_VARS_PCT", ascending=False).reset_index(drop=True)
 
     # Plot settings
-    panel_colors = {
-        "SomaScan": "#225D65",
-        "Olink": "#D39932",
-    }
+    acadia = [
+        "#A4BED5",
+        "#FED789",
+        "#72874E",
+        "#023743",
+        "#476F84",
+        "#453947",
+    ]
+    panel_colors = dict(zip(["SomaScan", "Olink"], acadia[:2]))
     bar_colors = plot_df["PANEL"].map(panel_colors).fillna("#A0A0A0")
     fig, ax = plt.subplots(figsize=(14, 6))
 
