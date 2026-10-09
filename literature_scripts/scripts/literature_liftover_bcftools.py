@@ -138,6 +138,11 @@ with pd.ExcelWriter(OUTPUT) as writer:
             continue
 
 
+        # ---- UNIQUE IDENTIFIER ----
+        df = df.reset_index(drop=True)
+        df["ROW_ID"] = df.index.astype(str)
+
+
         # ---- CONVERT TO VCF FOR LIFTOVER ----
         write_vcf(df, vcf_file)
 
@@ -242,24 +247,19 @@ with pd.ExcelWriter(OUTPUT) as writer:
             .str.replace("^chr", "", regex=True)
             .replace({"X": "23", "Y": "24"})
         )
-        df["CHR"] = df["CHR"].astype(str)
-        df["POS"] = df["POS"].astype(str)
-        df["POS37"] = df["POS37"].astype(str)
-        df["rsID"] = df["rsID"].astype(str)
         vcf_df["POS"] = vcf_df["POS"].astype(str)
         vcf_df["ID"] = vcf_df["ID"].astype(str)
-
         vcf_df = vcf_df.rename(columns={
-            "CHROM": "CHR_lift",
-            "POS": "POS_lift",
-            "ID": "rsID",
+            "CHROM": "CHR_BCFTOOLS",
+            "POS": "POS38_BCFTOOLS",
+            "ID": "ROW_ID",
         })
+        df["ROW_ID"] = df["ROW_ID"].astype(str)
 
         # Merge
         merged_df = df.merge(
-            vcf_df,
-            left_on=["CHR", "POS37", "rsID"],
-            right_on=["CHR_lift", "POS_lift", "rsID"],
+            vcf_df[["ROW_ID", "CHR_BCFTOOLS", "POS38_BCFTOOLS", "REF", "ALT"]],
+            on="ROW_ID",
             how="left"
         )
 
@@ -273,13 +273,12 @@ with pd.ExcelWriter(OUTPUT) as writer:
         merged_df = (
             merged_df
             .assign(
-                CHR=merged_df["CHR_lift"].combine_first(merged_df["CHR"]),
-                POS37=merged_df["POS"],
-                POS=merged_df["POS_lift"].combine_first(merged_df["POS"]),
-                SNPID=merged_df["CHR"] + ":" + merged_df["POS"] + ":" + merged_df["EA"] + ":" + merged_df["NEA"],
+                CHR=merged_df["CHR_BCFTOOLS"].copy(),
+                POS=merged_df["POS38_BCFTOOLS"].copy(),
             )
-            .drop(columns=["CHR_lift", "POS_lift", "REF", "ALT"])
+            .drop(columns=["ROW_ID", "CHR_BCFTOOLS", "POS38_BCFTOOLS", "REF", "ALT"])
         )
+        merged_df["SNPID"] = merged_df["CHR"] + ":" + merged_df["POS"] + ":" + merged_df["EA"] + ":" + merged_df["NEA"]
 
         # Save the liftovered formatted file
         merged_df.to_excel(writer, sheet_name=sheet, index=False)

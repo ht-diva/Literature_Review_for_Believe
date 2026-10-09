@@ -5,21 +5,26 @@ import pandas as pd
 
 
 def write_vcf(df, output_filename, build="GRCh37"):
-    with open(output_filename, "w") as vcf_file:
 
-        # Ensure POS is valid integer
-        df["POS"] = pd.to_numeric(df["POS"], errors="coerce")
-        df = df.dropna(subset=["POS"])
-        df["POS"] = df["POS"].astype(int)
+    vcf_input = df.copy()
 
-        # Convert CHR for bcftools processing
-        df["CHR"] = df["CHR"].astype(str).replace({
+    # Ensure POS is a valid integer
+    vcf_input["POS"] = pd.to_numeric(vcf_input["POS"], errors="coerce")
+    vcf_input = vcf_input.dropna(subset=["POS"])
+    vcf_input["POS"] = vcf_input["POS"].astype(int)
+
+    # Convert chromosomes for bcftools.
+    vcf_input["CHR"] = vcf_input["CHR"].astype(str).replace({
             "23": "X",
             "24": "Y",
-            "25": "MT"
-        })
-        if build == "GRCh38":
-            df["CHR"] = df["CHR"].apply(lambda x: f"chr{x}" if not x.startswith("chr") else x)
+            "25": "MT",
+    })
+
+    if build == "GRCh38":
+        vcf_input["CHR"] = vcf_input["CHR"].apply(lambda x: f"chr{x}" if not x.startswith("chr") else x)
+
+    # Write VCF
+    with open(output_filename, "w") as vcf_file:
 
         # Write the VCF header
         vcf_file.write("##fileformat=VCFv4.2\n")
@@ -29,16 +34,16 @@ def write_vcf(df, output_filename, build="GRCh37"):
         vcf_file.write('##INFO=<ID=SE,Number=1,Type=Float,Description=Standard Error>\n')
         vcf_file.write('##INFO=<ID=N,Number=1,Type=Integer,Description=Sample Size>\n')
         vcf_file.write('##INFO=<ID=MLOG10P,Number=1,Type=Float,Description=Negative Log10 P-value>\n')
-        chroms = df["CHR"].unique()
+        chroms = vcf_input["CHR"].unique()
         for c in chroms:
             vcf_file.write(f"##contig=<ID={c}>\n")
         vcf_file.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
 
         # Iterate through rows
-        for _, row in df.iterrows():
+        for _, row in vcf_input.iterrows():
             chrom = row["CHR"]
             pos = row["POS"]
-            vid = row["rsID"]
+            vid = row["ROW_ID"]
             ref = row["EA"]
             alt = row["NEA"]
             qual = "."

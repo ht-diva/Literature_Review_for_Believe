@@ -41,16 +41,15 @@ steps:
     gl_params:
       from_build: "19"
       to_build: "38"
-      #chain_path: "/Volumes/diangelantonio/public_data/liftOver/hg19ToHg38.over.chain.gz" #standard chain
-      chain_path: "/Volumes/diangelantonio/public_data/liftOver/hg19ToHg38.chainBridge.over.chain.gz" #bridge chain
+      chain_path: "/group/diangelantonio/public_data/liftOver/hg19ToHg38.chainBridge.over.chain.gz" #bridge chain
       remove: False
   harmonize: # see https://cloufield.github.io/gwaslab/Harmonization/
     params:
       run: True
     gl_params:
       basic_check: False
-      #ref_seq: "/group/diangelantonio/public_data/liftOver/human_g1k_v37.fasta"
-      #ref_rsid_vcf: "/group/diangelantonio/public_data/liftOver/All_20180423.vcf.gz"
+      ref_seq: "/group/diangelantonio/public_data/liftOver/hg38.nochr.fa"
+      ref_rsid_vcf: "/group/diangelantonio/public_data/liftOver/All_20180418.vcf.gz"
       threads: *cores
   sort_alphabetically:
     params:
