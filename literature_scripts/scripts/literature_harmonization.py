@@ -14,6 +14,7 @@ from utils.git import save_last_commit_id_to_file
 from utils.helper import extract_removed_number
 from utils.missing_ids import missing_seqid_uniprot, plot_missing_ids, report_missing_ids
 from utils.variant_loss import check_variant_loss, plot_variant_loss
+from utils.strand_alignment import plot_strand_alignment_metrics
 
 
 # ---- PATHS & CONFIG ----
@@ -106,6 +107,7 @@ summary_rows = []
 missing_ids_df = []
 missing_ids_plot_out = OUTDIR / "missing_ids.png"
 variant_loss_plot_out = OUTDIR / "variant_loss.png"
+strand_alignment_plot_out = OUTDIR / "strand_alignment_metrics.png"
 
 with pd.ExcelWriter(OUTPUT) as writer:
     for sheet in xls.sheet_names:
@@ -130,15 +132,11 @@ with pd.ExcelWriter(OUTPUT) as writer:
             print(f"Skip liftover test for {sheet}")
             continue
 
-        # For GRCh37, swap positions (37 <-> 38):
-        # For strand alignment with ref. GRCh37, POS is the target (mapped from pos38 in harmonization)
-        # For liftover in the next step, pos38 is needed to merge with liftovered output
+        # For GRCh37, update positions (37 -> 38):
+        # The input format maps pos38 to POS, so give GwasLab GRCh37 here to be mapped
         if refgenome == "GRCh37":
-            pos37 = df["pos37"]
-            pos38 = df["pos38"]
-            df["pos38"] = pos37
-            df["pos37"] = pos38
-            print("Swap POS for strand alignment...")
+            df["pos38"] = df["pos37"].copy()
+            print("Update POS37 -> POS for liftover...")
 
         fname = LITERATURE_INPUT_DIR / f"{sheet}.tsv"
         df.to_csv(fname, sep="\t", index=False)
@@ -262,7 +260,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
         liftover_unmapped = None
         ref_match_log = None
         ref_strand_flip_log = None
-        palindromic_snps_log = None
+        ambiguous_indels_log = None
 
         log_out = tsv_out.with_suffix(".log")
         timestamp_pat = re.compile(r'^[\d:/\s-]+-\s*')
@@ -288,7 +286,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
                     ref_strand_flip_log = value
                 value = extract_removed_number(line, "both allele on genome + unable to distinguish")
                 if value is not None:
-                    palindromic_snps_log = value
+                    ambiguous_indels_log = value
 
         # Count multi-allelic variants
         multiallelic_snps_mask = df_harm.groupby(["CHR", "POS"])["SNPID"].transform("nunique").gt(1)
@@ -308,7 +306,7 @@ with pd.ExcelWriter(OUTPUT) as writer:
             liftover_unmapped,
             ref_match_log,
             ref_strand_flip_log,
-            palindromic_snps_log,
+            ambiguous_indels_log,
             nr_multiallelic_snps
         ])
 
@@ -348,15 +346,24 @@ summary_df = pd.DataFrame(
         "VARIANTS_LIFTOVER_UNMAPPED",
         "REF_MATCH",
         "REF_FLIP_VARIANT_NR",
-        "REF_PALINDROMIC_NR",
+        "REF_AMBIGUOUS_INDEL_NR",
         "VARIANTS_MULTIALLELIC"
     ]
 )
 summary_df.to_csv(OUTDIR / "harmonization_summary.tsv", sep="\t", index=False)
 
+
 # ---- REPORT VARIANT LOSS ----
 check_variant_loss(summary_df)
 plot_variant_loss(summary_df, variant_loss_plot_out)
 
+
+# ---- PLOT STRAND ALIGNMENT METRICS ----
+plot_strand_alignment_metrics(summary_df, strand_alignment_plot_out)
+
+
+# ---- GIT COMMIT ID ----
 save_last_commit_id_to_file(OUTDIR / "release.txt")
+
+
 print("\n=== DONE ===")
