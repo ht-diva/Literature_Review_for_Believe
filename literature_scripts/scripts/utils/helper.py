@@ -144,7 +144,7 @@ def extract_removed_number(line, description):
     description = re.escape(description)
     patterns = [
         # Removed 10 variants with bad statistics...
-        rf"removed\s+{number_pattern}\s+{description}",
+        rf"(?:removed|saving)\s+{number_pattern}\s+{description}",
 
         # Raw matching rate: 99.5%
         # Removed variants with NA alleles or ...: 11

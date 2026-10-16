@@ -43,9 +43,9 @@ Cleaning includes:
 
 To compare the three liftover configurations:
 
-* bcftools liftover,
+* [bcftools liftover](https://github.com/pwu4/liftover-plugin-for-bcftools),
 * [GWASLab liftover](https://cloufield.github.io/gwaslab/LiftOver/) using its default UCSC chain file,
-* [GWASLab liftover](https://cloufield.github.io/gwaslab/LiftOver/) using the supplied UCSC bridge chain file
+* [GWASLab liftover](https://cloufield.github.io/gwaslab/LiftOver/) using the supplied UCSC bridge chain file (Released 2026-03-13; https://hgdownload.cse.ucsc.edu/goldenPath/hg19/liftOver/)
 
 run the following command:
 
@@ -56,7 +56,8 @@ make liftover_test
 The liftover test reports:
 
 * the number of unmapped variants for each configuration,
-* the number of variants whose mapped coordinates differ between bcftools and GWASLab using the bridge chain file.
+* the number of variants whose mapped coordinates differ between bcftools and GWASLab using the bridge chain file
+* NCBI validation for the mismatched variants
 
 ## 3. Literature Table Harmonization
 
